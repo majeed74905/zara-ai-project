@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { Menu, Sparkles, Hammer, Heart, WifiOff, Loader2 } from 'lucide-react';
+import { Menu, Sparkles, Hammer, Heart, WifiOff, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Message, Role, Attachment, ViewMode, ChatConfig, PersonalizationConfig, Persona } from './types';
 import { sendMessageToGeminiStream } from './services/gemini';
 import { OfflineService } from './services/offlineService';
@@ -59,6 +59,10 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Scroll Module State
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   useEffect(() => {
      const handleOnline = () => setIsOnline(true);
@@ -155,10 +159,22 @@ const App: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
+  const handleScrollToTop = () => {
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleScroll = () => {
     if (!scrollContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
+    
+    // Toggle Scroll Top Button
+    setShowScrollTop(scrollTop > 400);
+
+    // Toggle Scroll Bottom Button
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    const isAtBottom = distanceFromBottom < 100;
+    setShowScrollBottom(!isAtBottom);
+    
     shouldAutoScrollRef.current = isAtBottom;
   };
 
@@ -390,10 +406,33 @@ const App: React.FC = () => {
                      setConfig={setChatConfig} 
                      currentSession={currentSessionId ? sessions.find(s => s.id === currentSessionId) || null : null}
                   />
+                  
+                  {/* Floating Scroll Module */}
+                  <div className="absolute bottom-4 right-6 flex flex-col gap-2 z-30 pointer-events-none">
+                    {showScrollTop && (
+                      <button 
+                        onClick={handleScrollToTop}
+                        className="pointer-events-auto p-2.5 bg-surface/80 backdrop-blur-md border border-border rounded-full shadow-xl text-text-sub hover:text-primary hover:bg-surfaceHighlight transition-all hover:scale-110 active:scale-95"
+                        title="Scroll to Top"
+                      >
+                        <ArrowUp className="w-5 h-5" />
+                      </button>
+                    )}
+                    {showScrollBottom && (
+                      <button 
+                        onClick={() => scrollToBottom('smooth')}
+                        className="pointer-events-auto p-2.5 bg-surface/80 backdrop-blur-md border border-border rounded-full shadow-xl text-text-sub hover:text-primary hover:bg-surfaceHighlight transition-all hover:scale-110 active:scale-95"
+                        title="Scroll to Bottom"
+                      >
+                        <ArrowDown className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+
                   <div 
                     ref={scrollContainerRef}
                     onScroll={handleScroll}
-                    className="flex-1 overflow-y-auto px-4 md:px-0"
+                    className="flex-1 overflow-y-auto px-4 md:px-0 scroll-smooth"
                   >
                     <div className="max-w-3xl mx-auto h-full flex flex-col">
                       {messages.length === 0 ? (

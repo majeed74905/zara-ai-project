@@ -36,9 +36,9 @@ You are not alone. Please seek help from a professional.`;
 
 // Helper to format history - OPTIMIZED: LIMIT CONTEXT
 const formatHistory = (messages: Message[]): Content[] => {
-  // Optimization: Only send the last 20 messages to keep the context window manageable and uploads fast.
-  // This drastically reduces latency for long chats.
-  const recentMessages = messages.length > 20 ? messages.slice(messages.length - 20) : messages;
+  // Optimization: Send only the last 15 messages for maximum speed (Time-To-First-Token).
+  // This keeps the conversation context active while significantly reducing payload size.
+  const recentMessages = messages.length > 15 ? messages.slice(messages.length - 15) : messages;
 
   return recentMessages.map((msg) => {
     const parts: Part[] = [];

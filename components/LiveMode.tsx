@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Radio, AlertTriangle, User, Sparkles, Zap, AudioLines, RefreshCw, Heart, Globe, Play, ExternalLink, Music, Youtube, X, WifiOff, Disc, Settings, AlertCircle, Keyboard } from 'lucide-react';
+import { Mic, MicOff, Radio, AlertTriangle, User, Sparkles, Zap, AudioLines, RefreshCw, Heart, Globe, Play, ExternalLink, Music, Youtube, X, WifiOff, Disc, Settings, AlertCircle } from 'lucide-react';
 import { getAI, buildSystemInstruction, MEDIA_PLAYER_TOOL } from '../services/gemini';
 import { float32ToInt16, base64ToUint8Array, decodeAudioData, arrayBufferToBase64 } from '../utils/audioUtils';
 import { Modality, LiveServerMessage } from '@google/genai';
@@ -48,8 +48,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Text Input for Listener Mode
-  const [textInput, setTextInput] = useState('');
+  // Mic Access
   const [hasMicAccess, setHasMicAccess] = useState(true);
 
   // Offline detection logic for Live Mode
@@ -192,20 +191,6 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
     };
   };
 
-  const handleSendText = () => {
-     if (!textInput.trim() || !sessionRef.current) return;
-     
-     // Send Text via Live API
-     try {
-        sessionRef.current.send({ parts: [{ text: textInput }] });
-        setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', text: textInput }]);
-        setTextInput('');
-     } catch (e) {
-        console.error("Failed to send text in live mode", e);
-        setNotification("Text input not supported in this session.");
-     }
-  };
-
   const connect = async () => {
     if (!window.isSecureContext) {
         setError("Secure Context Required (HTTPS)");
@@ -277,7 +262,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
                 if (isMountedRef.current) {
                     setStatus(stream ? 'Listening...' : 'Listener Mode (Mic Off)');
                     if (!stream) {
-                        setNotification("Microphone unavailable. You can listen or type.");
+                        setNotification("Microphone unavailable. You can listen.");
                     }
                 }
             }
@@ -598,7 +583,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
 
         {messages.length === 0 && isActive && (
              <div className="text-center text-text-sub/40 mt-10">
-               <p>{hasMicAccess ? "Start speaking..." : "Type below to chat..."}</p>
+               <p>{hasMicAccess ? "Start speaking..." : "Microphone disabled."}</p>
              </div>
         )}
         {messages.map((msg) => (
@@ -622,23 +607,6 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
 
       {/* --- BOTTOM: Controls --- */}
       <div className="flex-shrink-0 p-6 bg-surface/30 backdrop-blur border-t border-border flex flex-col items-center gap-3">
-        
-        {/* Text Input Fallback if Mic is broken or user prefers typing in Live Mode */}
-        {isActive && (
-           <div className="w-full max-w-md flex gap-2 mb-2">
-              <input 
-                value={textInput}
-                onChange={e => setTextInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSendText()}
-                placeholder={hasMicAccess ? "Type to override voice..." : "Microphone disabled. Type here..."}
-                className="flex-1 bg-surface border border-border rounded-full px-4 py-2 text-sm focus:outline-none focus:border-primary"
-              />
-              <button onClick={handleSendText} className="bg-primary text-white p-2 rounded-full">
-                 <Keyboard className="w-4 h-4" />
-              </button>
-           </div>
-        )}
-
         <button
           onClick={toggleConnection}
           className={`px-8 py-3 rounded-full font-bold text-base transition-all flex items-center gap-2 shadow-lg ${
