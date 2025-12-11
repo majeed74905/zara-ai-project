@@ -1,5 +1,4 @@
 
-// ... (imports remain mostly the same, ensuring we have everything)
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Radio, AlertTriangle, User, Sparkles, Zap, AudioLines, RefreshCw, Heart, Globe, Play, ExternalLink, Music, Youtube, X, WifiOff, Disc, Settings, AlertCircle, Keyboard } from 'lucide-react';
 import { getAI, buildSystemInstruction, MEDIA_PLAYER_TOOL } from '../services/gemini';
@@ -196,8 +195,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
   const handleSendText = () => {
      if (!textInput.trim() || !sessionRef.current) return;
      
-     // Send Text via Live API (if supported by SDK as Content part)
-     // Fallback: If not supported by current SDK version types, catch error
+     // Send Text via Live API
      try {
         sessionRef.current.send({ parts: [{ text: textInput }] });
         setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', text: textInput }]);
@@ -228,7 +226,17 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
     setStatus('Initializing...');
 
     try {
-      // 1. Get Microphone Stream (Graceful Fallback)
+      // 1. Initialize Output Audio Context FIRST (CRITICAL FOR MOBILE)
+      // This ensures we capture the 'user gesture' immediately.
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const outputCtx = new AudioContextClass(); 
+      if (outputCtx.state === 'suspended') {
+          await outputCtx.resume();
+      }
+      audioContextRef.current = outputCtx;
+      nextStartTimeRef.current = outputCtx.currentTime;
+
+      // 2. Get Microphone Stream (Graceful Fallback)
       let stream: MediaStream | null = null;
       
       try {
@@ -243,13 +251,6 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
       
       mediaStreamRef.current = stream;
 
-      // 2. Initialize Output Audio Context (Always needed)
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      const outputCtx = new AudioContextClass(); // Use native rate
-      if (outputCtx.state === 'suspended') await outputCtx.resume();
-      audioContextRef.current = outputCtx;
-      nextStartTimeRef.current = outputCtx.currentTime;
-
       // 3. Connect to Gemini Live
       setStatus('Connecting to Zara...');
       const ai = getAI();
@@ -259,9 +260,11 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
           onopen: () => {
             if (isActiveRef.current) {
                 isConnectedRef.current = true;
-                if (isMountedRef.current) setStatus(stream ? 'Listening...' : 'Listener Mode (Mic Off)');
-                if (!stream && isMountedRef.current) {
-                    setNotification("Microphone unavailable. You can listen or type.");
+                if (isMountedRef.current) {
+                    setStatus(stream ? 'Listening...' : 'Listener Mode (Mic Off)');
+                    if (!stream) {
+                        setNotification("Microphone unavailable. You can listen or type.");
+                    }
                 }
             }
           },
@@ -375,6 +378,8 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
           },
           onerror: (err) => {
              const msg = err instanceof Error ? err.message : String(err);
+             console.error("Gemini Live Error:", msg);
+             // Don't kill the session immediately on minor errors, but log them
              if (msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('quota')) {
                  cleanup();
                  if (isMountedRef.current) {

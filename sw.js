@@ -1,14 +1,12 @@
 
 // Service Worker for Zara AI - Offline Capable
-const CACHE_NAME = 'zara-ai-offline-v2';
+const CACHE_NAME = 'zara-ai-offline-v4';
 
 // Files to cache immediately
 const PRECACHE_URLS = [
   './',
   './index.html',
-  './manifest.json',
-  // Assuming the build system/server serves this at this path based on index.tsx import
-  './styles/themes.css' 
+  './manifest.json'
 ];
 
 // External domains to cache (CDNs for React, Tailwind, Fonts, Icons)
@@ -24,7 +22,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Pre-caching app shell');
-      // We use addAll but catch errors so one missing file doesn't break the whole install
       return cache.addAll(PRECACHE_URLS).catch(err => {
           console.warn('Pre-caching failed for some URLs', err);
       });
