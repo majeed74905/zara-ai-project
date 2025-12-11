@@ -17,8 +17,20 @@ import {
 import { Message, Role, Attachment, Source, ChatConfig, PersonalizationConfig, StudentConfig, ExamConfig, ExamQuestion, Persona, Flashcard, StudyPlan, MediaAction } from "../types";
 import { memoryService } from "./memoryService";
 
-// Helper to init AI - STRICTLY use process.env.VITE_GOOGLE_API_KEY
-export const getAI = () => new GoogleGenAI({ apiKey: process.env.VITE_GOOGLE_API_KEY });
+// Helper to retrieve API Key safely
+const getApiKey = (): string => {
+  // Use import.meta.env for Vite support (primary)
+  // Cast to any to avoid TypeScript errors if types aren't generated
+  const key = (import.meta as any).env.VITE_GOOGLE_API_KEY;
+  if (!key) {
+    console.error("API Key is missing. Ensure VITE_GOOGLE_API_KEY is set in your .env file.");
+    return "";
+  }
+  return key;
+};
+
+// Helper to init AI
+export const getAI = () => new GoogleGenAI({ apiKey: getApiKey() });
 
 // ... (Keep SAFETY_SETTINGS and HELPLINE_MESSAGE as is) ...
 const SAFETY_SETTINGS = [
@@ -628,7 +640,7 @@ export const generateVideo = async (
       
       const uri = operation.response?.generatedVideos?.[0]?.video?.uri;
       if (!uri) throw new Error("Slideshow generation failed");
-      return `${uri}&key=${process.env.VITE_GOOGLE_API_KEY}`;
+      return `${uri}&key=${getApiKey()}`;
 
    } else {
       const config: any = {
@@ -662,7 +674,7 @@ export const generateVideo = async (
       const uri = operation.response?.generatedVideos?.[0]?.video?.uri;
       if (!uri) throw new Error("Video generation failed");
       
-      return `${uri}&key=${process.env.VITE_GOOGLE_API_KEY}`;
+      return `${uri}&key=${getApiKey()}`;
    }
 };
 
