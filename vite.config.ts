@@ -12,8 +12,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      // This is critical: It replaces process.env.API_KEY in your code with the actual string during build
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      // This is critical: It replaces process.env.VITE_GOOGLE_API_KEY in your code with the actual string during build
+      'process.env.VITE_GOOGLE_API_KEY': JSON.stringify(env.VITE_GOOGLE_API_KEY),
       // Fallback for other process.env calls
       'process.env': {}
     },
