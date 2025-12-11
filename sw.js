@@ -1,6 +1,6 @@
 
 // Service Worker for Zara AI - Offline Capable
-const CACHE_NAME = 'zara-ai-offline-v4';
+const CACHE_NAME = 'zara-ai-offline-v5';
 
 // Files to cache immediately
 const PRECACHE_URLS = [

@@ -83,7 +83,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
       setVolume(0);
       setNotification(null);
       setMediaCard(null);
-      setHasMicAccess(true); // Reset assumption
+      // We don't reset hasMicAccess here to avoid flickering UI state if reconnecting
     }
     
     if (sessionRef.current) {
@@ -227,29 +227,43 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
 
     try {
       // 1. Initialize Output Audio Context FIRST (CRITICAL FOR MOBILE)
-      // This ensures we capture the 'user gesture' immediately.
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) throw new Error("Audio not supported");
+      
       const outputCtx = new AudioContextClass(); 
-      if (outputCtx.state === 'suspended') {
-          await outputCtx.resume();
+      // Handle 'interrupted' state common on iOS/Android
+      if (outputCtx.state === 'suspended' || outputCtx.state === 'interrupted') {
+          try { await outputCtx.resume(); } catch (e) { console.warn("Context resume failed", e); }
       }
       audioContextRef.current = outputCtx;
       nextStartTimeRef.current = outputCtx.currentTime;
 
-      // 2. Get Microphone Stream (Graceful Fallback)
+      // 2. Get Microphone Stream (Graceful Fallback with retry strategy)
       let stream: MediaStream | null = null;
-      
-      try {
-         // Attempt bare minimum constraint first to maximize success
-         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-         setHasMicAccess(true);
-      } catch (e) {
-         console.warn("Microphone access failed", e);
-         setHasMicAccess(false);
-         // Do not return/throw - proceed to listener mode
+      const constraintsSets = [
+         { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } },
+         { audio: true } // Fallback
+      ];
+
+      for (const constraints of constraintsSets) {
+         try {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+               stream = await navigator.mediaDevices.getUserMedia(constraints);
+               break;
+            }
+         } catch (e) {
+            console.warn("Constraint failed:", constraints, e);
+         }
       }
       
-      mediaStreamRef.current = stream;
+      if (stream) {
+         setHasMicAccess(true);
+         mediaStreamRef.current = stream;
+      } else {
+         console.warn("Microphone access failed completely.");
+         setHasMicAccess(false);
+         // Fallback to Listener Mode
+      }
 
       // 3. Connect to Gemini Live
       setStatus('Connecting to Zara...');
@@ -290,7 +304,6 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
 
                        if (isMountedRef.current) {
                           setMediaCard({ title: args.title, url, platform });
-                          
                           try {
                              const win = window.open(url, '_blank', 'noopener,noreferrer');
                              if (win) {
@@ -379,7 +392,6 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
           onerror: (err) => {
              const msg = err instanceof Error ? err.message : String(err);
              console.error("Gemini Live Error:", msg);
-             // Don't kill the session immediately on minor errors, but log them
              if (msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('quota')) {
                  cleanup();
                  if (isMountedRef.current) {
