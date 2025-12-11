@@ -18,7 +18,7 @@ import { Message, Role, Attachment, Source, ChatConfig, PersonalizationConfig, S
 import { memoryService } from "./memoryService";
 
 // Helper to init AI - STRICTLY use process.env.API_KEY
-export const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+export const getAI = () => new GoogleGenAI({ apiKey: process.env.VITE_GOOGLE_API_KEY });
 
 // ... (Keep SAFETY_SETTINGS and HELPLINE_MESSAGE as is) ...
 const SAFETY_SETTINGS = [
