@@ -6,14 +6,13 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
-  // Fix: Use '.' instead of process.cwd() to resolve type error
   const env = loadEnv(mode, '.', '');
 
   return {
     plugins: [react()],
     define: {
-      // This is critical: It replaces process.env.API_KEY in your code with the actual string during build
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      // Prioritize VITE_GOOGLE_API_KEY as per user instruction, fallback to others
+      'process.env.API_KEY': JSON.stringify(env.VITE_GOOGLE_API_KEY || env.GOOGLE_API_KEY || env.API_KEY),
       // Fallback for other process.env calls
       'process.env': {}
     },

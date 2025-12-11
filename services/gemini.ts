@@ -17,8 +17,8 @@ import {
 import { Message, Role, Attachment, Source, ChatConfig, PersonalizationConfig, StudentConfig, ExamConfig, ExamQuestion, Persona, Flashcard, StudyPlan, MediaAction } from "../types";
 import { memoryService } from "./memoryService";
 
-// Helper to init AI - Use Vite browser env variable
-export const getAI = () => new GoogleGenAI({ apiKey: import.meta.env.VITE_GOOGLE_API_KEY });
+// Helper to init AI
+export const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // ... (Keep SAFETY_SETTINGS and HELPLINE_MESSAGE as is) ...
 const SAFETY_SETTINGS = [
@@ -628,7 +628,7 @@ export const generateVideo = async (
       
       const uri = operation.response?.generatedVideos?.[0]?.video?.uri;
       if (!uri) throw new Error("Slideshow generation failed");
-      return `${uri}&key=${import.meta.env.VITE_GOOGLE_API_KEY}`;
+      return `${uri}&key=${process.env.API_KEY}`;
 
    } else {
       const config: any = {
@@ -662,7 +662,7 @@ export const generateVideo = async (
       const uri = operation.response?.generatedVideos?.[0]?.video?.uri;
       if (!uri) throw new Error("Video generation failed");
       
-      return `${uri}&key=${import.meta.env.VITE_GOOGLE_API_KEY}`;
+      return `${uri}&key=${process.env.API_KEY}`;
    }
 };
 

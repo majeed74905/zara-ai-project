@@ -1,6 +1,7 @@
 
+// ... (imports remain mostly the same, ensuring we have everything)
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Radio, AlertTriangle, User, Sparkles, Zap, AudioLines, RefreshCw, Heart, Globe, Play, ExternalLink, Music, Youtube, X, WifiOff, Disc } from 'lucide-react';
+import { Mic, MicOff, Radio, AlertTriangle, User, Sparkles, Zap, AudioLines, RefreshCw, Heart, Globe, Play, ExternalLink, Music, Youtube, X, WifiOff, Disc, Settings, AlertCircle, Keyboard } from 'lucide-react';
 import { getAI, buildSystemInstruction, MEDIA_PLAYER_TOOL } from '../services/gemini';
 import { float32ToInt16, base64ToUint8Array, decodeAudioData, arrayBufferToBase64 } from '../utils/audioUtils';
 import { Modality, LiveServerMessage } from '@google/genai';
@@ -35,6 +36,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
   const isMountedRef = useRef(true);
   const isConnectedRef = useRef(false);
   
+  // Audio Refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -47,9 +49,9 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Throttling Refs for UI Performance
-  const lastTranscriptUpdateRef = useRef<number>(0);
-  const transcriptBufferRef = useRef<LiveMessage[]>([]);
+  // Text Input for Listener Mode
+  const [textInput, setTextInput] = useState('');
+  const [hasMicAccess, setHasMicAccess] = useState(true);
 
   // Offline detection logic for Live Mode
   useEffect(() => {
@@ -82,6 +84,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
       setVolume(0);
       setNotification(null);
       setMediaCard(null);
+      setHasMicAccess(true); // Reset assumption
     }
     
     if (sessionRef.current) {
@@ -171,7 +174,6 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
 
     const now = ctx.currentTime;
     // Tighter scheduling window: 0.02s instead of 0.05s for lower latency
-    // But preserve gapless playback if queue is busy
     if (nextStartTimeRef.current < now) {
         nextStartTimeRef.current = now + 0.02;
     }
@@ -191,6 +193,21 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
     };
   };
 
+  const handleSendText = () => {
+     if (!textInput.trim() || !sessionRef.current) return;
+     
+     // Send Text via Live API (if supported by SDK as Content part)
+     // Fallback: If not supported by current SDK version types, catch error
+     try {
+        sessionRef.current.send({ parts: [{ text: textInput }] });
+        setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', text: textInput }]);
+        setTextInput('');
+     } catch (e) {
+        console.error("Failed to send text in live mode", e);
+        setNotification("Text input not supported in this session.");
+     }
+  };
+
   const connect = async () => {
     if (!window.isSecureContext) {
         setError("Secure Context Required (HTTPS)");
@@ -208,39 +225,32 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
     setNotification(null);
     setMediaCard(null);
     isActiveRef.current = true;
-    setStatus('Initializing Audio...');
+    setStatus('Initializing...');
 
     try {
-      // 1. Enforce 16kHz for better input quality matching model requirements
-      let inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      if (inputCtx.state === 'suspended') await inputCtx.resume();
-      inputAudioContextRef.current = inputCtx;
+      // 1. Get Microphone Stream (Graceful Fallback)
+      let stream: MediaStream | null = null;
+      
+      try {
+         // Attempt bare minimum constraint first to maximize success
+         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+         setHasMicAccess(true);
+      } catch (e) {
+         console.warn("Microphone access failed", e);
+         setHasMicAccess(false);
+         // Do not return/throw - proceed to listener mode
+      }
+      
+      mediaStreamRef.current = stream;
 
-      // Output context
-      const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      // 2. Initialize Output Audio Context (Always needed)
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const outputCtx = new AudioContextClass(); // Use native rate
       if (outputCtx.state === 'suspended') await outputCtx.resume();
       audioContextRef.current = outputCtx;
       nextStartTimeRef.current = outputCtx.currentTime;
 
-      setStatus('Requesting Microphone...');
-      let stream: MediaStream;
-      try {
-        // Clear Voice Constraints
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true, // Key for clear voice
-            autoGainControl: true,
-            sampleRate: 16000, 
-            channelCount: 1
-          }
-        });
-      } catch (err) {
-        console.warn("Advanced audio constraints failed, falling back", err);
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      }
-      mediaStreamRef.current = stream;
-
+      // 3. Connect to Gemini Live
       setStatus('Connecting to Zara...');
       const ai = getAI();
       const session = await ai.live.connect({
@@ -249,7 +259,10 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
           onopen: () => {
             if (isActiveRef.current) {
                 isConnectedRef.current = true;
-                if (isMountedRef.current) setStatus('Listening...');
+                if (isMountedRef.current) setStatus(stream ? 'Listening...' : 'Listener Mode (Mic Off)');
+                if (!stream && isMountedRef.current) {
+                    setNotification("Microphone unavailable. You can listen or type.");
+                }
             }
           },
           onmessage: async (message: LiveServerMessage) => {
@@ -268,38 +281,27 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
                        if (platform === 'spotify') {
                            url = `https://open.spotify.com/search/${encodeURIComponent(args.query)}`;
                        } else {
-                           // Construct YouTube Search URL
                            const encodedQuery = encodeURIComponent(args.query);
                            url = `https://www.youtube.com/results?search_query=${encodedQuery}`;
                        }
 
-                       // Execute Open in New Tab Immediately
                        if (isMountedRef.current) {
-                          // Display persistent card immediately as fallback
                           setMediaCard({ title: args.title, url, platform });
                           
                           try {
-                             // Try to open automatically with noopener,noreferrer for security
                              const win = window.open(url, '_blank', 'noopener,noreferrer');
                              if (win) {
-                                 // Attempt to focus the window (may be blocked by some browsers)
                                  win.focus();
                                  setNotification(`Playing ${args.title} on ${platform === 'spotify' ? 'Spotify' : 'YouTube'}...`);
                              } else {
-                                 // Popup blocked logic
-                                 console.warn("Popup blocked");
                                  setNotification("Popup blocked. Click 'Open' below.");
                              }
                           } catch(e) {
-                             console.error("Failed to open tab", e);
                              setNotification("Tap 'Open' below to play.");
                           }
-                          
-                          // Clear toast after 5s
                           setTimeout(() => setNotification(null), 5000);
                        }
 
-                       // Send Response back to model
                        if (sessionRef.current) {
                           sessionRef.current.sendToolResponse({
                               functionResponses: [{
@@ -313,7 +315,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
                 }
              }
 
-             // Handle Text Transcription with Throttling
+             // Handle Text Transcription
              let newText = '';
              let role: 'user' | 'model' | null = null;
 
@@ -326,7 +328,6 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
              }
 
              if (role && newText && isMountedRef.current) {
-                // Determine update strategy
                 setMessages(prev => {
                     const lastMsg = prev[prev.length - 1];
                     if (lastMsg && lastMsg.role === role) {
@@ -337,7 +338,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
                 });
              }
 
-             // Handle Audio
+             // Handle Audio Output
              const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
              if (base64Audio) {
                const ctx = audioContextRef.current;
@@ -360,7 +361,6 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
                     try { s.stop(); s.disconnect(); } catch(e) {} 
                 });
                 audioQueueRef.current = [];
-                // Reset time to current to avoid gap
                 if (audioContextRef.current) {
                     nextStartTimeRef.current = audioContextRef.current.currentTime;
                 }
@@ -398,55 +398,58 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
 
       sessionRef.current = session;
 
-      // INPUT GAIN (MICROPHONE BOOST 150%)
-      const source = inputCtx.createMediaStreamSource(stream);
-      const inputGain = inputCtx.createGain();
-      inputGain.gain.value = 1.5; 
-      source.connect(inputGain);
+      // 4. Input Setup (Only if mic is available)
+      if (stream) {
+          const inputCtx = new AudioContextClass();
+          if (inputCtx.state === 'suspended') await inputCtx.resume();
+          inputAudioContextRef.current = inputCtx;
 
-      // PERFORMANCE FIX: Reduced buffer size from 4096 to 2048 for lower latency
-      // 2048 @ 16kHz ~= 128ms latency
-      const processor = inputCtx.createScriptProcessor(2048, 1, 1);
-      processorRef.current = processor;
-      inputGain.connect(processor);
-      processor.connect(inputCtx.destination); 
+          const source = inputCtx.createMediaStreamSource(stream);
+          const inputGain = inputCtx.createGain();
+          inputGain.gain.value = 1.5; 
+          source.connect(inputGain);
 
-      processor.onaudioprocess = (e) => {
-         if (!sessionRef.current || !isActiveRef.current || !isConnectedRef.current) return;
-         
-         let inputData = e.inputBuffer.getChannelData(0);
-         
-         // Visualizer Volume Update (Throttled for UI performance)
-         if (isMountedRef.current && Math.random() > 0.5) {
-            let sum = 0;
-            // Sampling only a subset for RMS calculation to save CPU
-            for (let i=0; i<inputData.length; i+=50) {
-                sum += inputData[i] * inputData[i];
-            }
-            const rms = Math.sqrt(sum / (inputData.length/50));
-            setVolume(Math.min(rms * 5, 1)); 
-         }
+          const processor = inputCtx.createScriptProcessor(4096, 1, 1);
+          processorRef.current = processor;
+          inputGain.connect(processor);
+          processor.connect(inputCtx.destination); 
 
-         // Manual downsample if native context was forced to 48k by browser
-         if (inputCtx.sampleRate !== 16000) {
-             inputData = downsampleBuffer(inputData, inputCtx.sampleRate, 16000);
-         }
-         
-         const pcmData = float32ToInt16(inputData);
-         const pcmBase64 = arrayBufferToBase64(pcmData.buffer);
-         
-         try {
-             // Use the session promise to avoid race conditions (handled by Ref, but good practice)
-             sessionRef.current.sendRealtimeInput({
-                media: { mimeType: 'audio/pcm;rate=16000', data: pcmBase64 }
-            });
-         } catch(err) {}
-      };
+          processor.onaudioprocess = (e) => {
+             if (!sessionRef.current || !isActiveRef.current || !isConnectedRef.current) return;
+             
+             let inputData = e.inputBuffer.getChannelData(0);
+             
+             // Visualizer Volume
+             if (isMountedRef.current && Math.random() > 0.5) {
+                let sum = 0;
+                for (let i=0; i<inputData.length; i+=50) {
+                    sum += inputData[i] * inputData[i];
+                }
+                const rms = Math.sqrt(sum / (inputData.length/50));
+                setVolume(Math.min(rms * 5, 1)); 
+             }
+
+             // Downsample to 16kHz for Gemini
+             if (inputCtx.sampleRate !== 16000) {
+                 inputData = downsampleBuffer(inputData, inputCtx.sampleRate, 16000);
+             }
+             
+             const pcmData = float32ToInt16(inputData);
+             const pcmBase64 = arrayBufferToBase64(pcmData.buffer);
+             
+             try {
+                 sessionRef.current.sendRealtimeInput({
+                    media: { mimeType: 'audio/pcm;rate=16000', data: pcmBase64 }
+                });
+             } catch(err) {}
+          };
+      }
 
     } catch (e: any) {
       cleanup();
       if (isMountedRef.current) {
-         setError(`Connection Failed: ${e.message}`);
+         console.error("Live Connect Error:", e);
+         setError(e.message || "Connection failed.");
          setStatus('Failed');
       }
     }
@@ -487,13 +490,13 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                   {status === 'Listening...' && (
+                   {status === 'Listening...' ? (
                      <>
                         <Heart className="w-3.5 h-3.5 text-pink-500 animate-pulse" />
                         <Globe className="w-3.5 h-3.5 text-blue-500" />
+                        Listening...
                      </>
-                   )}
-                   {status}
+                   ) : status}
                 </span>
               ))}
            </div>
@@ -517,7 +520,11 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
             />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 {navigator.onLine ? (
-                   <Radio className={`w-10 h-10 text-white transition-opacity ${isActive ? 'opacity-100' : 'opacity-50'}`} />
+                   !hasMicAccess ? (
+                      <MicOff className="w-10 h-10 text-white/50" /> 
+                   ) : (
+                      <Radio className={`w-10 h-10 text-white transition-opacity ${isActive ? 'opacity-100' : 'opacity-50'}`} />
+                   )
                 ) : (
                    <WifiOff className="w-10 h-10 text-white/50" />
                 )}
@@ -529,7 +536,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
       {notification && isActive && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex justify-center animate-fade-in pointer-events-none">
            <div className="bg-black/80 backdrop-blur text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-white/10">
-              {mediaCard?.platform === 'spotify' ? <Music className="w-4 h-4 text-green-500" /> : <Youtube className="w-4 h-4 text-red-500" />}
+              {notification.includes('Microphone') ? <MicOff className="w-4 h-4 text-orange-500" /> : <Settings className="w-4 h-4 text-blue-500" />}
               <span className="text-sm font-medium">{notification}</span>
            </div>
         </div>
@@ -574,7 +581,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
 
         {messages.length === 0 && isActive && (
              <div className="text-center text-text-sub/40 mt-10">
-               <p>Start speaking in your preferred language...</p>
+               <p>{hasMicAccess ? "Start speaking..." : "Type below to chat..."}</p>
              </div>
         )}
         {messages.map((msg) => (
@@ -598,15 +605,23 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
 
       {/* --- BOTTOM: Controls --- */}
       <div className="flex-shrink-0 p-6 bg-surface/30 backdrop-blur border-t border-border flex flex-col items-center gap-3">
-        {error && (
-          <div className="mb-4 text-center">
-            <p className="text-sm text-red-400 mb-2">{error}</p>
-            <button onClick={() => { setError(null); connect(); }} className="flex items-center gap-2 text-xs bg-surfaceHighlight hover:bg-surface px-4 py-2 rounded-lg border border-white/10 mx-auto">
-              <RefreshCw className="w-3 h-3" /> Retry Connection
-            </button>
-          </div>
-        )}
         
+        {/* Text Input Fallback if Mic is broken or user prefers typing in Live Mode */}
+        {isActive && (
+           <div className="w-full max-w-md flex gap-2 mb-2">
+              <input 
+                value={textInput}
+                onChange={e => setTextInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSendText()}
+                placeholder={hasMicAccess ? "Type to override voice..." : "Microphone disabled. Type here..."}
+                className="flex-1 bg-surface border border-border rounded-full px-4 py-2 text-sm focus:outline-none focus:border-primary"
+              />
+              <button onClick={handleSendText} className="bg-primary text-white p-2 rounded-full">
+                 <Keyboard className="w-4 h-4" />
+              </button>
+           </div>
+        )}
+
         <button
           onClick={toggleConnection}
           className={`px-8 py-3 rounded-full font-bold text-base transition-all flex items-center gap-2 shadow-lg ${
