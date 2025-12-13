@@ -132,7 +132,7 @@ export const StudentMode: React.FC = () => {
                <div className="relative flex-1">
                  <input 
                    type="file" 
-                   accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.webp" 
+                   accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.webp,.docx,.pptx" 
                    onChange={handleFileUpload} 
                    className="absolute inset-0 opacity-0 cursor-pointer"
                  />

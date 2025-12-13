@@ -327,8 +327,7 @@ export const extractMediaAction = (text: string): { cleanText: string, mediaActi
   return { cleanText: text, mediaAction: null };
 };
 
-// ... (Rest of file logic like sendMessageToGeminiStream etc remains unchanged) ...
-// Core implementation of functions remains same as original
+// --- CORE CHAT FUNCTION WITH QUOTA FALLBACK ---
 export const sendMessageToGeminiStream = async (
   history: Message[],
   newMessage: string,
@@ -356,7 +355,7 @@ export const sendMessageToGeminiStream = async (
   const contents: Content[] = [...formattedHistory, { role: Role.USER, parts: currentParts }];
 
   // Model Selection Logic
-  const model = config.model || 'gemini-2.5-flash';
+  let model = config.model || 'gemini-2.5-flash';
   
   let requestConfig: any = {
     systemInstruction: buildSystemInstruction(personalization, activePersona),
@@ -380,49 +379,85 @@ export const sendMessageToGeminiStream = async (
   if (!requestConfig['tools']) requestConfig['tools'] = [];
   requestConfig['tools'].push({ functionDeclarations: [MEDIA_PLAYER_TOOL, SAVE_MEMORY_TOOL] });
 
-  try {
-    const stream = await ai.models.generateContentStream({
-      model: model,
+  // EXECUTION HELPER
+  const executeStream = async (modelName: string) => {
+    return await ai.models.generateContentStream({
+      model: modelName,
       contents: contents,
       config: requestConfig
     });
+  };
 
+  try {
+    let stream = await executeStream(model);
+    
+    // Process Stream
     let fullText = '';
     const sources: Source[] = [];
 
-    for await (const chunk of stream) {
-      if (chunk.text) {
-        fullText += chunk.text;
-        onUpdate(fullText);
-      }
-      
-      // Handle Tool Calls (specifically Memory)
-      const functionCalls = chunk.functionCalls;
-      if (functionCalls) {
-        for (const call of functionCalls) {
-          if (call.name === 'save_memory') {
-             // Execute Memory Save locally
-             const args: any = call.args;
-             console.log("Saving Memory:", args);
-             memoryService.addMemory(args.content, args.category, args.tags);
+    // Helper to process stream
+    const processStream = async (s: any) => {
+        for await (const chunk of s) {
+          if (chunk.text) {
+            fullText += chunk.text;
+            onUpdate(fullText);
+          }
+          const functionCalls = chunk.functionCalls;
+          if (functionCalls) {
+            for (const call of functionCalls) {
+              if (call.name === 'save_memory') {
+                 const args: any = call.args;
+                 memoryService.addMemory(args.content, args.category, args.tags);
+              }
+            }
+          }
+          const chunks = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks;
+          if (chunks) {
+            chunks.forEach((c: any) => {
+              if (c.web) sources.push({ title: c.web.title, uri: c.web.uri });
+            });
           }
         }
-      }
+    }
 
-      const chunks = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks;
-      if (chunks) {
-        chunks.forEach((c: any) => {
-          if (c.web) {
-            sources.push({ title: c.web.title, uri: c.web.uri });
-          }
-        });
-      }
+    try {
+       await processStream(stream);
+    } catch (streamError: any) {
+        // CATCH 429 IN STREAM
+        if (streamError.status === 429 || streamError.code === 429) {
+            throw streamError; // Rethrow to outer catch
+        }
+        throw streamError;
     }
 
     if (!fullText) return { text: HELPLINE_MESSAGE, sources: [] };
     return { text: fullText, sources };
 
   } catch (error: any) {
+    // AUTOMATIC FALLBACK LOGIC
+    if ((error.status === 429 || error.code === 429) && model.includes('pro')) {
+        console.warn("Pro Model Quota Exceeded. Falling back to Flash.");
+        onUpdate("\n\n*⚠️ Pro Quota Exceeded. Switching to Zara Fast...*\n\n");
+        
+        // Remove thinking config if falling back to a model that might not support high budget or needs different config
+        if (requestConfig.thinkingConfig) {
+            requestConfig.thinkingConfig.thinkingBudget = 8192; // Reset to safe Flash budget
+        }
+        
+        const fallbackStream = await executeStream('gemini-2.5-flash');
+        let fullText = ''; 
+        const sources: Source[] = [];
+        
+        for await (const chunk of fallbackStream) {
+            if (chunk.text) {
+                fullText += chunk.text;
+                onUpdate(fullText);
+            }
+            // ... process tools/sources ...
+        }
+        return { text: fullText, sources };
+    }
+
     console.error("Gemini API Error:", error);
     onUpdate("Error: " + (error.message || "Unknown error"));
     throw error;
@@ -553,64 +588,62 @@ export const generateImageContent = async (prompt: string, options: any): Promis
   const PRO_MODEL = 'gemini-3-pro-image-preview';
   const FLASH_MODEL = 'gemini-2.5-flash-image'; // Standard model name for images
 
-  if (options.referenceImage) {
-    const response = await ai.models.generateContent({
-       model: FLASH_MODEL,
-       contents: {
-         parts: [
-           { inlineData: { mimeType: options.referenceImage.mimeType, data: options.referenceImage.base64 } },
-           { text: prompt }
-         ]
-       }
-    });
-    
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-         return { imageUrl: `data:image/png;base64,${part.inlineData.data}` };
-      }
-      if (part.text) {
-         return { text: part.text };
-      }
-    }
-    return { text: "No image generated." };
-
-  } else {
-    // Determine model based on quality/user selection
-    const selectedModel = (options.model === 'pro') ? PRO_MODEL : FLASH_MODEL;
-    const config: any = {};
-    
-    // Only Pro supports resolution config
-    if (options.model === 'pro') {
-       config.imageConfig = {
-          aspectRatio: options.aspectRatio || "1:1",
-          imageSize: options.imageSize || "1K"
-       };
-    } else {
-       config.imageConfig = {
-          aspectRatio: options.aspectRatio || "1:1"
-       };
-    }
-
-    try {
-       const response = await ai.models.generateContent({
-         model: selectedModel,
-         contents: { parts: [{ text: prompt }] },
-         config: config
-       });
-       
-       for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-           return { imageUrl: `data:image/png;base64,${part.inlineData.data}` };
+  const tryGenerate = async (model: string) => {
+      if (options.referenceImage) {
+        return await ai.models.generateContent({
+           model: FLASH_MODEL, // Edit always uses flash
+           contents: {
+             parts: [
+               { inlineData: { mimeType: options.referenceImage.mimeType, data: options.referenceImage.base64 } },
+               { text: prompt }
+             ]
+           }
+        });
+      } else {
+        const config: any = {};
+        if (model === PRO_MODEL) {
+           config.imageConfig = {
+              aspectRatio: options.aspectRatio || "1:1",
+              imageSize: options.imageSize || "1K"
+           };
+        } else {
+           config.imageConfig = {
+              aspectRatio: options.aspectRatio || "1:1"
+           };
         }
+        return await ai.models.generateContent({
+             model: model,
+             contents: { parts: [{ text: prompt }] },
+             config: config
+        });
       }
-      return { text: "Failed to generate image." };
-    } catch (e: any) {
-        // Fallback for Quota limits - try simpler model if PRO failed
-        if (options.model === 'pro' && (e.status === 429 || e.message.includes('Quota'))) {
-            throw new Error(`Pro model quota exceeded. Try switching to 'Flash' model.`);
-        }
-        throw e;
-    }
+  };
+
+  try {
+      // Determine initial model
+      const selectedModel = (options.model === 'pro') ? PRO_MODEL : FLASH_MODEL;
+      const response = await tryGenerate(selectedModel);
+      
+      for (const part of response.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData) return { imageUrl: `data:image/png;base64,${part.inlineData.data}` };
+        if (part.text) return { text: part.text };
+      }
+      return { text: "No image generated." };
+
+  } catch (e: any) {
+      // Fallback for Quota limits - try simpler model if PRO failed
+      if (options.model === 'pro' && (e.status === 429 || e.code === 429 || e.message.includes('Quota'))) {
+          console.warn("Pro Image Quota Exceeded. Retrying with Flash Image Model.");
+          try {
+             const response = await tryGenerate(FLASH_MODEL);
+             for (const part of response.candidates?.[0]?.content?.parts || []) {
+                if (part.inlineData) return { imageUrl: `data:image/png;base64,${part.inlineData.data}` };
+             }
+          } catch (retryError: any) {
+             throw new Error(`Quota exceeded on both models. Please try again later.`);
+          }
+      }
+      throw e;
   }
 };
 
