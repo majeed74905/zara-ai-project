@@ -31,8 +31,8 @@ export const CodeMode: React.FC = () => {
   ];
 
   return (
-    <div className="h-full flex flex-col p-4 md:p-8 animate-fade-in max-w-6xl mx-auto">
-      <div className="mb-6 flex justify-between items-end">
+    <div className="h-full flex flex-col p-4 md:p-8 animate-fade-in max-w-6xl mx-auto overflow-hidden">
+      <div className="mb-6 flex justify-between items-end flex-shrink-0">
         <div>
           <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
             Code Architect
@@ -57,9 +57,9 @@ export const CodeMode: React.FC = () => {
       </div>
 
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 overflow-y-auto">
           <div className="glass-panel p-4 rounded-xl flex-1 flex flex-col min-h-[400px]">
-            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-2 flex-shrink-0">
               {tasks.map((task) => (
                 <button
                   key={task.id}
@@ -83,7 +83,7 @@ export const CodeMode: React.FC = () => {
               className="flex-1 bg-background rounded-lg p-4 font-mono text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary/50 text-text border border-border"
             />
             
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end flex-shrink-0">
               <button
                 onClick={handleRun}
                 disabled={loading || !inputCode}
@@ -96,7 +96,7 @@ export const CodeMode: React.FC = () => {
           </div>
         </div>
 
-        <div className="glass-panel p-6 rounded-xl overflow-y-auto min-h-[400px] markdown-body">
+        <div className="glass-panel p-6 rounded-xl overflow-y-auto min-h-[400px] markdown-body custom-scrollbar touch-pan-y">
           {result ? (
             <ReactMarkdown>{result}</ReactMarkdown>
           ) : (

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, ChevronLeft, ChevronRight, Flag } from 'lucide-react';
 import { ExamQuestion, ExamAnswer } from '../../types';
@@ -59,8 +60,8 @@ export const ExamTaking: React.FC<ExamTakingProps> = ({
 
       <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden md:mt-6">
          
-         {/* Question Area */}
-         <div className="flex-1 overflow-y-auto px-4 md:px-0 pb-20 md:pb-0">
+         {/* Question Area - Scrollable */}
+         <div className="flex-1 overflow-y-auto px-4 md:px-0 pb-20 md:pb-0 custom-scrollbar touch-pan-y">
             <div className="glass-panel p-6 md:p-8 rounded-3xl min-h-[400px]">
                <div className="flex justify-between items-start mb-6">
                   <span className="bg-surfaceHighlight text-text-sub px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
@@ -109,7 +110,7 @@ export const ExamTaking: React.FC<ExamTakingProps> = ({
             </div>
 
             {/* Mobile Nav */}
-            <div className="flex justify-between mt-4 md:hidden">
+            <div className="flex justify-between mt-4 md:hidden pb-10">
                 <button 
                   disabled={currentIndex === 0}
                   onClick={() => setCurrentIndex(prev => prev - 1)}
@@ -128,7 +129,7 @@ export const ExamTaking: React.FC<ExamTakingProps> = ({
          </div>
 
          {/* Sidebar Navigation (Desktop) */}
-         <div className="hidden md:flex flex-col w-64 glass-panel p-4 rounded-2xl h-fit">
+         <div className="hidden md:flex flex-col w-64 glass-panel p-4 rounded-2xl h-fit overflow-y-auto max-h-full">
             <h4 className="text-sm font-bold text-text mb-4">Question Map</h4>
             <div className="grid grid-cols-4 gap-2">
                {questions.map((q, idx) => (

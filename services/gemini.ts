@@ -57,8 +57,7 @@ const formatHistory = (messages: Message[]): Content[] => {
   }).filter(content => content.parts.length > 0); 
 };
 
-// ... (Rest of file remains unchanged) ...
-// ... (Keep TOOLS: MEDIA_PLAYER_TOOL, SAVE_MEMORY_TOOL, ZARA_CORE_IDENTITY, ZARA_BUILDER_IDENTITY, buildSystemInstruction, extractMediaAction) ...
+// ... (Keep TOOLS export constants) ...
 export const MEDIA_PLAYER_TOOL: FunctionDeclaration = {
   name: "play_media",
   description: "Opens music or videos in a new tab (YouTube or Spotify). Use this immediately when the user wants to play a song or video. Do NOT ask for audio/video format preference.",
@@ -89,6 +88,7 @@ export const SAVE_MEMORY_TOOL: FunctionDeclaration = {
   }
 };
 
+// ... (Keep ZARA_CORE_IDENTITY and other constants) ...
 export const ZARA_CORE_IDENTITY = `
 **IDENTITY: Zara AI — Ultra Unified GEN-2 Intelligence System**
 
@@ -481,13 +481,25 @@ export const sendAppBuilderStream = async (
   }
 };
 
-export const generateStudentContent = async (config: StudentConfig): Promise<string> => {
+export const generateStudentContent = async (config: StudentConfig & { attachment?: { mimeType: string, base64: string } }): Promise<string> => {
   const ai = getAI();
   let prompt = "";
   let context = "";
-  if (config.studyMaterial) {
-    context = `\n\n**SOURCE MATERIAL:**\n"${config.studyMaterial}"\n\n**INSTRUCTION:**\nUse the above source material as the primary truth.`;
+  
+  const parts: Part[] = [];
+
+  if (config.attachment) {
+     parts.push({
+        inlineData: {
+           mimeType: config.attachment.mimeType,
+           data: config.attachment.base64
+        }
+     });
+     context += "\n\n**INSTRUCTION:** Use the attached document/image as the primary source material for this task.";
+  } else if (config.studyMaterial) {
+    context += `\n\n**SOURCE MATERIAL:**\n"${config.studyMaterial}"\n\n**INSTRUCTION:**\nUse the above source material as the primary truth.`;
   }
+
   switch(config.mode) {
     case 'summary':
       prompt = `Summarize the topic "${config.topic}" into concise, easy-to-read bullet points. Highlight key concepts, formulas, and important dates. ${context}`;
@@ -505,10 +517,12 @@ export const generateStudentContent = async (config: StudentConfig): Promise<str
       prompt = `Explain the concept "${config.topic}" like I am 10 years old. Use analogies and simple language. ${context}`;
       break;
   }
+  
+  parts.push({ text: prompt });
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',
-    contents: prompt,
+    contents: { role: Role.USER, parts },
     config: { safetySettings: SAFETY_SETTINGS }
   });
   return response.text || "No content generated.";
@@ -535,9 +549,13 @@ export const generateCodeAssist = async (code: string, task: string, language: s
 export const generateImageContent = async (prompt: string, options: any): Promise<{ imageUrl?: string, text?: string }> => {
   const ai = getAI();
   
+  // Use a stable model version to avoid "preview" quota issues on the free tier if possible
+  const PRO_MODEL = 'gemini-3-pro-image-preview';
+  const FLASH_MODEL = 'gemini-2.5-flash-image'; // Standard model name for images
+
   if (options.referenceImage) {
     const response = await ai.models.generateContent({
-       model: 'gemini-2.5-flash-image',
+       model: FLASH_MODEL,
        contents: {
          parts: [
            { inlineData: { mimeType: options.referenceImage.mimeType, data: options.referenceImage.base64 } },
@@ -557,32 +575,27 @@ export const generateImageContent = async (prompt: string, options: any): Promis
     return { text: "No image generated." };
 
   } else {
-    if (options.model === 'gemini-3-pro-image-preview') {
-       const response = await ai.models.generateContent({
-         model: 'gemini-3-pro-image-preview',
-         contents: { parts: [{ text: prompt }] },
-         config: {
-            imageConfig: {
-               aspectRatio: options.aspectRatio || "1:1",
-               imageSize: options.imageSize || "1K"
-            }
-         }
-       });
-       
-       for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-           return { imageUrl: `data:image/png;base64,${part.inlineData.data}` };
-        }
-      }
-      return { text: "Failed to generate image." };
-
+    // Determine model based on quality/user selection
+    const selectedModel = (options.model === 'pro') ? PRO_MODEL : FLASH_MODEL;
+    const config: any = {};
+    
+    // Only Pro supports resolution config
+    if (options.model === 'pro') {
+       config.imageConfig = {
+          aspectRatio: options.aspectRatio || "1:1",
+          imageSize: options.imageSize || "1K"
+       };
     } else {
+       config.imageConfig = {
+          aspectRatio: options.aspectRatio || "1:1"
+       };
+    }
+
+    try {
        const response = await ai.models.generateContent({
-         model: 'gemini-2.5-flash-image',
+         model: selectedModel,
          contents: { parts: [{ text: prompt }] },
-         config: {
-           imageConfig: { aspectRatio: options.aspectRatio || "1:1" }
-         }
+         config: config
        });
        
        for (const part of response.candidates?.[0]?.content?.parts || []) {
@@ -591,10 +604,17 @@ export const generateImageContent = async (prompt: string, options: any): Promis
         }
       }
       return { text: "Failed to generate image." };
+    } catch (e: any) {
+        // Fallback for Quota limits - try simpler model if PRO failed
+        if (options.model === 'pro' && (e.status === 429 || e.message.includes('Quota'))) {
+            throw new Error(`Pro model quota exceeded. Try switching to 'Flash' model.`);
+        }
+        throw e;
     }
   }
 };
 
+// ... (Rest of file remains unchanged) ...
 export const generateVideo = async (
   prompt: string, 
   aspectRatio: string, 

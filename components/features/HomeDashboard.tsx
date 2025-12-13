@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Layout, Heart, Target, Brain, ArrowRight, Zap, MessageSquare, Clock, Calendar, Hammer } from 'lucide-react';
+import { Target, ArrowRight, Zap, MessageSquare, Clock, Calendar, Hammer, Shield } from 'lucide-react';
 import { ViewMode } from '../../types';
 
 interface HomeDashboardProps {
@@ -19,30 +19,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ onViewChange }) =>
 
   return (
     <div className="h-full p-6 md:p-8 animate-fade-in overflow-y-auto max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-4xl font-bold bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent mb-2">
-          {greeting}, User
-        </h2>
-        <p className="text-text-sub">Here is your daily Zara AI snapshot.</p>
+      <div className="mb-8 flex justify-between items-end">
+        <div>
+          <h2 className="text-4xl font-bold bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent mb-2">
+            {greeting}, Guest
+          </h2>
+          <p className="text-text-sub">Here is your daily Zara AI snapshot.</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         
-        {/* Mood Insight */}
-        <div className="bg-surface/50 border border-border rounded-2xl p-6 backdrop-blur-sm hover:border-primary/30 transition-all group">
-           <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-pink-500/10 rounded-lg text-pink-500">
-                 <Heart className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold bg-surfaceHighlight px-2 py-1 rounded text-text-sub">Today</span>
-           </div>
-           <h3 className="text-xl font-bold text-text mb-1">Balanced & Calm</h3>
-           <p className="text-sm text-text-sub mb-4">Your emotional baseline is stable today. Great time for deep work.</p>
-           <button onClick={() => onViewChange('life-os')} className="text-sm text-primary font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-              Open LifeOS <ArrowRight className="w-4 h-4" />
-           </button>
-        </div>
-
         {/* Builder Shortcut */}
         <div className="bg-gradient-to-br from-indigo-900/20 to-blue-900/20 border border-blue-500/30 rounded-2xl p-6 backdrop-blur-sm hover:shadow-lg transition-all group">
            <div className="flex justify-between items-start mb-4">
@@ -91,15 +78,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ onViewChange }) =>
                   <span className="font-bold text-sm block">Study Plan</span>
                   <span className="text-xs text-text-sub">Review schedule</span>
                </button>
-               <button onClick={() => onViewChange('creative')} className="p-3 rounded-xl bg-surfaceHighlight hover:bg-surface border border-transparent hover:border-primary/30 transition-all text-left">
-                  <Brain className="w-5 h-5 mb-2 text-pink-400" />
-                  <span className="font-bold text-sm block">Brainstorm</span>
-                  <span className="text-xs text-text-sub">New ideas</span>
+               <button onClick={() => onViewChange('builder')} className="p-3 rounded-xl bg-surfaceHighlight hover:bg-surface border border-transparent hover:border-primary/30 transition-all text-left">
+                  <Hammer className="w-5 h-5 mb-2 text-pink-400" />
+                  <span className="font-bold text-sm block">Build App</span>
+                  <span className="text-xs text-text-sub">Code generator</span>
                </button>
                <button onClick={() => onViewChange('life-os')} className="p-3 rounded-xl bg-surfaceHighlight hover:bg-surface border border-transparent hover:border-primary/30 transition-all text-left">
-                  <Heart className="w-5 h-5 mb-2 text-red-400" />
-                  <span className="font-bold text-sm block">Check-in</span>
-                  <span className="text-xs text-text-sub">Log mood</span>
+                  <Shield className="w-5 h-5 mb-2 text-red-400" />
+                  <span className="font-bold text-sm block">Security</span>
+                  <span className="text-xs text-text-sub">Review logs</span>
                </button>
             </div>
          </div>

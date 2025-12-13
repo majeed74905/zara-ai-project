@@ -318,7 +318,6 @@ const App: React.FC = () => {
 
       // --- THROTTLING LOGIC ---
       // We buffer chunks and only update React state every X ms
-      // This prevents React from choking on 50 updates per second
       let bufferText = "";
       let lastUpdateTs = Date.now();
       const THROTTLE_MS = 80; 
@@ -529,10 +528,10 @@ const App: React.FC = () => {
       <div className="flex-1 flex flex-col h-full relative w-full">
         {/* Offline Banner */}
         {!isOnline && (
-           <div className="bg-orange-500/90 backdrop-blur text-white text-xs font-bold py-2 px-4 text-center z-50 flex items-center justify-center gap-2 animate-fade-in shadow-lg">
+            <div className="bg-orange-500/90 backdrop-blur text-white text-xs font-bold py-2 px-4 text-center z-50 flex items-center justify-center gap-2 animate-fade-in shadow-lg">
               <WifiOff className="w-3.5 h-3.5" />
               <span>Offline Mode &bull; Searching Local Memory Only</span>
-           </div>
+            </div>
         )}
 
         <header className="md:hidden h-14 flex items-center justify-between px-4 border-b border-border bg-background/80 backdrop-blur z-20">
@@ -549,9 +548,9 @@ const App: React.FC = () => {
       </div>
 
       <CommandPalette 
-         isOpen={isCommandOpen} 
-         onClose={() => setIsCommandOpen(false)} 
-         onAction={handleCommandAction}
+          isOpen={isCommandOpen} 
+          onClose={() => setIsCommandOpen(false)} 
+          onAction={handleCommandAction}
       />
 
       <SettingsModal 

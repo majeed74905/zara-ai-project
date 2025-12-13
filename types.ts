@@ -266,3 +266,25 @@ export interface AppFeedback {
   text: string;
   timestamp: number;
 }
+
+// --- AUTHENTICATION & TRUST ---
+export interface AuthUser {
+  id: string;
+  email: string;
+  trustScore: number;
+  deviceFingerprint: string;
+  lastLogin: number;
+  loginCount: number;
+  createdAt: number;
+}
+
+export interface TrustFactors {
+  behaviorScore: number;
+  securityScore: number;
+  signals: {
+    deviceTrusted: boolean;
+    locationStable: boolean;
+    usageConsistent: boolean;
+    recentFailure: boolean;
+  }
+}

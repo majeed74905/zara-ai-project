@@ -75,24 +75,22 @@ export const ImageMode: React.FC = () => {
     try {
       let options: any = {
         aspectRatio: aspectRatio,
+        model: modelType
       };
 
-      if (activeTab === 'generate') {
-         if (modelType === 'pro') {
-            options.model = 'gemini-3-pro-image-preview';
-            options.imageSize = imageSize;
-         } else {
-            options.model = 'gemini-2.5-flash-image';
-         }
-      } else {
+      if (activeTab === 'edit') {
          // Edit Mode always uses Flash (currently best for instruction based editing)
-         options.model = 'gemini-2.5-flash-image';
+         options.model = 'flash'; // Use Flash logic in service
          if (editImageFile) {
             const base64 = await fileToBase64(editImageFile);
             options.referenceImage = {
                base64,
                mimeType: editImageFile.type
             };
+         }
+      } else {
+         if (modelType === 'pro') {
+            options.imageSize = imageSize;
          }
       }
 
@@ -104,7 +102,11 @@ export const ImageMode: React.FC = () => {
         setTextResponse(result.text);
       }
     } catch (e: any) {
-      setTextResponse(`Failed: ${e.message}`);
+      if (e.message.includes("quota") || e.message.includes("429")) {
+          setTextResponse("Quota Limit Reached. Please wait a moment or try 'Flash' model.");
+      } else {
+          setTextResponse(`Failed: ${e.message}`);
+      }
     }
     setLoading(false);
   };
@@ -127,8 +129,8 @@ export const ImageMode: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col max-w-7xl mx-auto p-4 md:p-8 animate-fade-in overflow-y-auto">
-      <div className="mb-8 text-center">
+    <div className="h-full flex flex-col max-w-7xl mx-auto p-4 md:p-8 animate-fade-in overflow-y-auto custom-scrollbar touch-pan-y">
+      <div className="mb-8 text-center flex-shrink-0">
         <h2 className="text-4xl font-bold bg-gradient-to-br from-white via-primary to-accent bg-clip-text text-transparent mb-4">
           Image Studio
         </h2>
@@ -136,7 +138,7 @@ export const ImageMode: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex justify-center gap-4 mb-8">
+      <div className="flex justify-center gap-4 mb-8 flex-shrink-0">
         <button
           onClick={() => setActiveTab('generate')}
           className={`px-6 py-2 rounded-full font-medium transition-all flex items-center gap-2 ${
@@ -157,10 +159,10 @@ export const ImageMode: React.FC = () => {
         </button>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
         
         {/* Controls Column */}
-        <div className="lg:w-1/3 flex flex-col gap-6">
+        <div className="lg:w-1/3 flex flex-col gap-6 overflow-y-auto pr-2">
           <div className="glass-panel p-6 rounded-3xl space-y-6">
              
              {/* Configuration */}
@@ -290,7 +292,7 @@ export const ImageMode: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col gap-6">
+        <div className="flex-1 flex flex-col gap-6 overflow-y-auto">
            {/* Result Area */}
            <div className="flex-1 glass-panel rounded-3xl p-4 flex flex-col items-center justify-center min-h-[500px] border-dashed border-2 border-white/5 relative overflow-hidden bg-black/20">
                {loading ? (
@@ -325,7 +327,7 @@ export const ImageMode: React.FC = () => {
            </div>
 
            {/* Famous Figures Gallery */}
-           <div className="glass-panel p-6 rounded-2xl">
+           <div className="glass-panel p-6 rounded-2xl flex-shrink-0">
               <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
                  <Users className="w-5 h-5 text-primary" /> Famous Figures
                  <span className="text-xs font-normal text-text-sub ml-2 bg-surfaceHighlight px-2 py-0.5 rounded-full">Click to Use</span>

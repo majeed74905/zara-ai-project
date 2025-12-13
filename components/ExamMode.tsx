@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ExamConfig, ExamSession, ExamQuestion, ExamAnswer } from '../types';
 import { generateExamQuestions, evaluateTheoryAnswers } from '../services/gemini';
@@ -151,36 +152,35 @@ export const ExamMode: React.FC = () => {
     startExam();
   };
 
-  if (step === 'setup') {
-    return <ExamSetup config={config} setConfig={setConfig} onStart={startExam} isLoading={isLoading} />;
-  }
+  // Wrapper for all steps to ensure scrolling
+  return (
+    <div className="h-full overflow-y-auto custom-scrollbar touch-pan-y">
+      {step === 'setup' && (
+        <ExamSetup config={config} setConfig={setConfig} onStart={startExam} isLoading={isLoading} />
+      )}
 
-  if (step === 'taking' && session) {
-    return (
-      <ExamTaking 
-        questions={session.questions} 
-        durationMinutes={session.config.durationMinutes}
-        answers={session.answers}
-        onAnswer={handleAnswer}
-        onSubmit={submitExam}
-        subject={session.config.subject}
-      />
-    );
-  }
+      {step === 'taking' && session && (
+        <ExamTaking 
+          questions={session.questions} 
+          durationMinutes={session.config.durationMinutes}
+          answers={session.answers}
+          onAnswer={handleAnswer}
+          onSubmit={submitExam}
+          subject={session.config.subject}
+        />
+      )}
 
-  if (step === 'evaluating') {
-    return (
-      <div className="h-full flex flex-col items-center justify-center animate-fade-in">
-        <Loader2 className="w-16 h-16 text-primary animate-spin mb-6" />
-        <h2 className="text-2xl font-bold text-text mb-2">Evaluating Results...</h2>
-        <p className="text-text-sub">Zara is checking your answers.</p>
-      </div>
-    );
-  }
+      {step === 'evaluating' && (
+        <div className="h-full flex flex-col items-center justify-center animate-fade-in">
+          <Loader2 className="w-16 h-16 text-primary animate-spin mb-6" />
+          <h2 className="text-2xl font-bold text-text mb-2">Evaluating Results...</h2>
+          <p className="text-text-sub">Zara is checking your answers.</p>
+        </div>
+      )}
 
-  if (step === 'results' && session) {
-    return <ExamResults session={session} onRetake={retakeSame} onExit={exitExam} />;
-  }
-
-  return null;
+      {step === 'results' && session && (
+        <ExamResults session={session} onRetake={retakeSame} onExit={exitExam} />
+      )}
+    </div>
+  );
 };

@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { BookOpen, HelpCircle, FileText, CheckCircle, Loader2, Upload, File, Trash2 } from 'lucide-react';
+import { BookOpen, HelpCircle, FileText, CheckCircle, Loader2, Upload, File, Trash2, Image as ImageIcon } from 'lucide-react';
 import { generateStudentContent } from '../services/gemini';
 import { useStudyMaterial } from '../hooks/useStudyMaterial';
+import { fileToBase64 } from '../utils/fileUtils';
 import ReactMarkdown from 'react-markdown';
 
 export const StudentMode: React.FC = () => {
@@ -14,35 +15,65 @@ export const StudentMode: React.FC = () => {
   const [mcqCount, setMcqCount] = useState(5);
   const [mcqDifficulty, setMcqDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
 
-  const { studyMaterial, updateMaterial, loadFromFile, clearMaterial } = useStudyMaterial();
+  // Text-based study material from hook (legacy/text-only)
+  const { studyMaterial, updateMaterial, clearMaterial } = useStudyMaterial();
   const [showMaterialInput, setShowMaterialInput] = useState(false);
+  
+  // New File State for Multimodal input (PDF, Images)
+  const [studyFile, setStudyFile] = useState<{name: string, type: string, base64: string} | null>(null);
 
   const handleGenerate = async () => {
-    if (!topic && !studyMaterial) return;
+    if (!topic && !studyMaterial && !studyFile) return;
     setLoading(true);
     try {
-      const config = {
-        topic: topic || "Uploaded Content",
+      const config: any = {
+        topic: topic || (studyFile ? studyFile.name : "Uploaded Content"),
         mode: activeTab,
         mcqConfig: {
           count: mcqCount,
           difficulty: mcqDifficulty
         },
-        studyMaterial: studyMaterial
+        studyMaterial: studyMaterial, // Pass text content if any
+        attachment: studyFile ? { mimeType: studyFile.type, base64: studyFile.base64 } : undefined
       };
       
       const content = await generateStudentContent(config);
       setResult(content);
-    } catch (e) {
-      setResult("Error generating content. Please try again.");
+    } catch (e: any) {
+      setResult("Error generating content. Please try again or check file size.");
     }
     setLoading(false);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      loadFromFile(e.target.files[0]).catch(err => alert(err.message));
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        // If it's a simple text file, load into text area like before
+        if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+           const text = await file.text();
+           updateMaterial(text);
+           setStudyFile(null);
+        } else {
+           // For PDF, Images, etc. -> Convert to Base64 for Multimodal API
+           const base64 = await fileToBase64(file);
+           setStudyFile({
+              name: file.name,
+              type: file.type,
+              base64
+           });
+           // Clear text material to avoid confusion
+           clearMaterial(); 
+        }
+      } catch (err) {
+        alert("Failed to process file.");
+      }
     }
+  };
+
+  const clearUpload = () => {
+     setStudyFile(null);
+     clearMaterial();
   };
 
   const tabs = [
@@ -54,24 +85,24 @@ export const StudentMode: React.FC = () => {
   ];
 
   return (
-    <div className="h-full flex flex-col max-w-5xl mx-auto p-4 md:p-8 animate-fade-in">
-      <div className="mb-6">
+    <div className="h-full flex flex-col max-w-5xl mx-auto p-4 md:p-8 animate-fade-in overflow-y-auto custom-scrollbar touch-pan-y">
+      <div className="mb-6 flex-shrink-0">
         <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
           Student Companion
         </h2>
         <p className="text-text-sub">Generate study materials, notes, and quizzes instantly.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
         
         {/* Left Column: Controls */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className="lg:col-span-1 space-y-4 overflow-y-auto">
           
           <div className="glass-panel p-4 rounded-2xl">
             <div className="flex justify-between items-center mb-2">
               <label className="text-sm font-bold text-text">Study Material</label>
-              {studyMaterial && (
-                <button onClick={clearMaterial} className="text-red-400 hover:bg-red-500/10 p-1 rounded-lg">
+              {(studyMaterial || studyFile) && (
+                <button onClick={clearUpload} className="text-red-400 hover:bg-red-500/10 p-1 rounded-lg">
                   <Trash2 className="w-4 h-4" />
                 </button>
               )}
@@ -80,10 +111,15 @@ export const StudentMode: React.FC = () => {
             {studyMaterial ? (
                <div className="bg-green-500/10 border border-green-500/20 text-green-500 p-3 rounded-xl text-xs flex items-center gap-2 mb-2">
                  <File className="w-4 h-4" />
-                 Material Loaded ({studyMaterial.length} chars)
+                 Text Loaded ({studyMaterial.length} chars)
+               </div>
+            ) : studyFile ? (
+               <div className="bg-blue-500/10 border border-blue-500/20 text-blue-500 p-3 rounded-xl text-xs flex items-center gap-2 mb-2">
+                 {studyFile.type.includes('image') ? <ImageIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                 File Loaded: {studyFile.name}
                </div>
             ) : (
-               <p className="text-xs text-text-sub mb-3">Upload notes to generate questions based on specific content.</p>
+               <p className="text-xs text-text-sub mb-3">Upload PDF, Notes, or Images to generate content.</p>
             )}
 
             <div className="flex gap-2">
@@ -96,12 +132,12 @@ export const StudentMode: React.FC = () => {
                <div className="relative flex-1">
                  <input 
                    type="file" 
-                   accept=".txt,.md" 
+                   accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.webp" 
                    onChange={handleFileUpload} 
                    className="absolute inset-0 opacity-0 cursor-pointer"
                  />
                  <button className="w-full bg-surfaceHighlight border border-border text-text text-xs py-2 rounded-lg hover:bg-surface flex justify-center items-center gap-2">
-                    <Upload className="w-3 h-3" /> Upload .txt
+                    <Upload className="w-3 h-3" /> Upload File
                  </button>
                </div>
             </div>
@@ -122,7 +158,7 @@ export const StudentMode: React.FC = () => {
               type="text" 
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder={studyMaterial ? "Optional (using uploaded notes)" : "e.g. Quantum Physics"}
+              placeholder={studyFile || studyMaterial ? "Optional (using uploaded content)" : "e.g. Quantum Physics"}
               className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
             />
           </div>
@@ -181,7 +217,7 @@ export const StudentMode: React.FC = () => {
 
              <button
               onClick={handleGenerate}
-              disabled={loading || (!topic && !studyMaterial)}
+              disabled={loading || (!topic && !studyMaterial && !studyFile)}
               className="w-full bg-gradient-to-r from-primary to-accent text-white py-3 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-primary/20"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -191,15 +227,15 @@ export const StudentMode: React.FC = () => {
 
         </div>
 
-        <div className="lg:col-span-2">
-           <div className="glass-panel rounded-2xl p-6 md:p-8 h-full min-h-[500px] overflow-y-auto markdown-body relative">
+        <div className="lg:col-span-2 flex flex-col h-full min-h-0">
+           <div className="glass-panel rounded-2xl p-6 md:p-8 flex-1 overflow-y-auto custom-scrollbar markdown-body relative">
               {result ? (
                  <ReactMarkdown>{result}</ReactMarkdown>
               ) : (
-                 <div className="absolute inset-0 flex flex-col items-center justify-center text-text-sub/30">
+                 <div className="absolute inset-0 flex flex-col items-center justify-center text-text-sub/30 pointer-events-none">
                     <BookOpen className="w-16 h-16 mb-4 opacity-50" />
                     <p className="text-lg font-medium">Ready to study</p>
-                    <p className="text-sm max-w-xs text-center mt-2">Upload notes or enter a topic to generate custom study material.</p>
+                    <p className="text-sm max-w-xs text-center mt-2">Upload notes (PDF/Text/Image) or enter a topic to generate custom study material.</p>
                  </div>
               )}
            </div>

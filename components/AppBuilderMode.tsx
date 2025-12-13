@@ -97,7 +97,7 @@ const ConsolePanel = ({ logs }: { logs: string[] }) => {
           <span className="flex items-center gap-1 hover:text-white cursor-pointer"><Terminal className="w-3 h-3" /> Terminal</span>
           <span className="flex items-center gap-1 hover:text-white cursor-pointer"><Activity className="w-3 h-3" /> Output</span>
        </div>
-       <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 space-y-1 text-gray-300">
+       <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 space-y-1 text-gray-300 custom-scrollbar touch-pan-y">
           {logs.length === 0 && <span className="text-gray-600 italic pl-2">Console ready...</span>}
           {logs.map((log, i) => (
              <div key={i} className="flex gap-2 font-mono border-b border-white/5 py-0.5">
@@ -515,7 +515,7 @@ export const AppBuilderMode: React.FC = () => {
   // --- RENDER PROJECT LIST ---
   if (view === 'projects') {
      return (
-        <div className="h-full bg-[#09090b] text-white p-8 animate-fade-in overflow-y-auto">
+        <div className="h-full bg-[#09090b] text-white p-8 animate-fade-in overflow-y-auto custom-scrollbar touch-pan-y">
            <div className="max-w-6xl mx-auto">
               <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
                  <div>
@@ -604,7 +604,7 @@ export const AppBuilderMode: React.FC = () => {
                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Project Files</span>
                    <span className="text-[10px] bg-[#27272a] px-1.5 py-0.5 rounded text-gray-500">{activeProject?.files.length}</span>
                 </div>
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto custom-scrollbar touch-pan-y">
                    {activeProject?.files.map(f => (
                       <button 
                         key={f.path} 
@@ -628,7 +628,7 @@ export const AppBuilderMode: React.FC = () => {
                 <div className="px-4 py-2 border-b border-[#27272a] bg-[#202023] text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                    <Play className="w-3 h-3 text-green-500" /> AI Instructions
                 </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar touch-pan-y">
                    {messages.map(msg => (
                       <div key={msg.id} className={`flex ${msg.role === Role.USER ? 'justify-end' : 'justify-start'}`}>
                          <div className={`max-w-[90%] rounded-lg p-3 text-xs ${msg.role === Role.USER ? 'bg-blue-600 text-white' : 'bg-[#27272a] text-gray-300 border border-[#3f3f46]'}`}>
@@ -672,7 +672,7 @@ export const AppBuilderMode: React.FC = () => {
                       <textarea 
                          value={activeFile.content} 
                          readOnly 
-                         className="absolute inset-0 w-full h-full bg-[#1e1e1e] text-gray-300 font-mono text-sm p-4 outline-none resize-none leading-relaxed custom-scrollbar whitespace-pre"
+                         className="absolute inset-0 w-full h-full bg-[#1e1e1e] text-gray-300 font-mono text-sm p-4 outline-none resize-none leading-relaxed custom-scrollbar whitespace-pre touch-pan-y"
                          spellCheck={false}
                       />
                    </div>

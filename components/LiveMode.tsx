@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Radio, AlertTriangle, User, Sparkles, Zap, AudioLines, RefreshCw, Heart, Globe, Play, ExternalLink, Music, Youtube, X, WifiOff, Disc, Settings, AlertCircle } from 'lucide-react';
+import { Mic, MicOff, Radio, AlertTriangle, User, Sparkles, Zap, AudioLines, RefreshCw, Heart, Globe, Play, ExternalLink, Music, Youtube, X, WifiOff, Disc, Settings, AlertCircle, Lock } from 'lucide-react';
 import { getAI, buildSystemInstruction, MEDIA_PLAYER_TOOL } from '../services/gemini';
 import { float32ToInt16, base64ToUint8Array, decodeAudioData, arrayBufferToBase64 } from '../utils/audioUtils';
 import { Modality, LiveServerMessage } from '@google/genai';
@@ -50,6 +50,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
   
   // Mic Access
   const [hasMicAccess, setHasMicAccess] = useState(true);
+  const [micErrorDetail, setMicErrorDetail] = useState<string>('');
 
   // Offline detection logic for Live Mode
   useEffect(() => {
@@ -192,8 +193,10 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
   };
 
   const connect = async () => {
+    // 1. Context Check
     if (!window.isSecureContext) {
-        setError("Secure Context Required (HTTPS)");
+        setError("HTTPS Required for Mic");
+        setNotification("App must be served over HTTPS");
         return;
     }
 
@@ -211,7 +214,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
     setStatus('Initializing...');
 
     try {
-      // 1. Initialize Output Audio Context FIRST (CRITICAL FOR MOBILE)
+      // 2. Initialize Output Audio Context FIRST (CRITICAL FOR MOBILE)
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContextClass) throw new Error("Audio not supported");
       
@@ -223,34 +226,45 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
       audioContextRef.current = outputCtx;
       nextStartTimeRef.current = outputCtx.currentTime;
 
-      // 2. Get Microphone Stream (Graceful Fallback with retry strategy)
+      // 3. Get Microphone Stream (Robust Fallback for Median/WebView)
       let stream: MediaStream | null = null;
+      let lastMicError: any = null;
+
+      // Try progressively simpler constraints
       const constraintsSets = [
          { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } },
-         { audio: true } // Fallback
+         { audio: { echoCancellation: false } },
+         { audio: true } // Absolute fallback
       ];
 
       for (const constraints of constraintsSets) {
          try {
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                stream = await navigator.mediaDevices.getUserMedia(constraints);
-               break;
+               console.log("Mic acquired with constraints:", constraints);
+               break; 
             }
          } catch (e) {
             console.warn("Constraint failed:", constraints, e);
+            lastMicError = e;
          }
       }
       
+      // Explicitly check if stream was acquired
       if (stream) {
          setHasMicAccess(true);
+         setMicErrorDetail('');
          mediaStreamRef.current = stream;
       } else {
-         console.warn("Microphone access failed completely.");
+         console.error("Microphone access failed completely.");
          setHasMicAccess(false);
-         // Fallback to Listener Mode
+         // Provide specific error name to user for debugging (e.g. NotAllowedError)
+         const errorName = lastMicError?.name || "AccessDenied";
+         setMicErrorDetail(errorName);
+         setNotification(`Mic Error: ${errorName}. Check App Permissions.`);
       }
 
-      // 3. Connect to Gemini Live
+      // 4. Connect to Gemini Live
       setStatus('Connecting to Zara...');
       const ai = getAI();
       const session = await ai.live.connect({
@@ -262,7 +276,8 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
                 if (isMountedRef.current) {
                     setStatus(stream ? 'Listening...' : 'Listener Mode (Mic Off)');
                     if (!stream) {
-                        setNotification("Microphone unavailable. You can listen.");
+                        // Keep notification persistent for a few seconds so they see it
+                        setTimeout(() => setNotification(null), 6000);
                     }
                 }
             }
@@ -400,9 +415,10 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
 
       sessionRef.current = session;
 
-      // 4. Input Setup (Only if mic is available)
+      // 5. Input Setup (Only if mic is available)
       if (stream) {
           const inputCtx = new AudioContextClass();
+          // Explicit resume for Mobile Safari/Chrome behavior
           if (inputCtx.state === 'suspended') await inputCtx.resume();
           inputAudioContextRef.current = inputCtx;
 
@@ -431,7 +447,7 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
                 setVolume(Math.min(rms * 5, 1)); 
              }
 
-             // Downsample to 16kHz for Gemini
+             // Downsample to 16kHz for Gemini (Common on mobile where default is 48k/44.1k)
              if (inputCtx.sampleRate !== 16000) {
                  inputData = downsampleBuffer(inputData, inputCtx.sampleRate, 16000);
              }
@@ -468,6 +484,11 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
     } else {
       connect();
     }
+  };
+
+  const retryMic = () => {
+      cleanup();
+      setTimeout(() => connect(), 200);
   };
 
   return (
@@ -536,10 +557,10 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
 
       {/* --- NOTIFICATION TOAST --- */}
       {notification && isActive && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex justify-center animate-fade-in pointer-events-none">
-           <div className="bg-black/80 backdrop-blur text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 border border-white/10">
-              {notification.includes('Microphone') ? <MicOff className="w-4 h-4 text-orange-500" /> : <Settings className="w-4 h-4 text-blue-500" />}
-              <span className="text-sm font-medium">{notification}</span>
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex justify-center animate-fade-in pointer-events-none w-full max-w-sm">
+           <div className="bg-black/80 backdrop-blur text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-white/10">
+              {notification.includes('Mic Error') || notification.includes('Microphone') ? <Lock className="w-5 h-5 text-orange-500" /> : <Settings className="w-5 h-5 text-blue-500" />}
+              <span className="text-xs font-medium leading-tight">{notification}</span>
            </div>
         </div>
       )}
@@ -582,8 +603,13 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
         </div>
 
         {messages.length === 0 && isActive && (
-             <div className="text-center text-text-sub/40 mt-10">
-               <p>{hasMicAccess ? "Start speaking..." : "Microphone disabled."}</p>
+             <div className="text-center text-text-sub/40 mt-10 space-y-4">
+               <p>{hasMicAccess ? "Start speaking..." : `Microphone unavailable (${micErrorDetail || "Unknown"}).`}</p>
+               {!hasMicAccess && (
+                  <button onClick={retryMic} className="px-4 py-2 bg-surface border border-border rounded-full text-xs font-bold hover:bg-surfaceHighlight transition-colors pointer-events-auto">
+                     Tap to Retry Access
+                  </button>
+               )}
              </div>
         )}
         {messages.map((msg) => (
