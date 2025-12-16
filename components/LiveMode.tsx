@@ -389,21 +389,49 @@ export const LiveMode: React.FC<LiveModeProps> = ({ personalization }) => {
                 if (isMountedRef.current) setStatus('Disconnected');
             }
           },
-          onerror: (err) => {
-             const msg = err instanceof Error ? err.message : String(err);
-             console.error("Gemini Live Error:", msg);
-             if (msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('quota')) {
-                 cleanup();
-                 if (isMountedRef.current) {
-                    setError(`Connection Error: ${msg}`);
-                    setStatus('Error');
+          onerror: (err: any) => {
+             // Robust Error Event Handling to fix [object ErrorEvent]
+             let errorMessage = "Unknown connection error";
+             
+             if (err instanceof Error) {
+                 errorMessage = err.message;
+             } else if (typeof err === 'object' && err !== null) {
+                 if ('message' in err && err.message) {
+                     errorMessage = err.message;
+                 } else if (err.type === 'error') {
+                     errorMessage = "Connection refused or network blocked";
+                 } else {
+                     try {
+                        // Fallback stringify, but avoid [object Object] if possible
+                        const json = JSON.stringify(err);
+                        if (json !== '{}') errorMessage = json;
+                        else errorMessage = "WebSocket Error";
+                     } catch(e) {
+                        errorMessage = String(err);
+                     }
                  }
+             } else {
+                 errorMessage = String(err);
+             }
+
+             // Don't show confusing [object ErrorEvent] to user
+             if (errorMessage === '[object ErrorEvent]') {
+                 errorMessage = "Connection dropped. Please check network.";
+             }
+
+             console.error("Gemini Live Error:", errorMessage);
+             
+             cleanup();
+             if (isMountedRef.current) {
+                setError(`Error: ${errorMessage}`);
+                setStatus('Failed');
              }
           }
         },
         config: {
             responseModalities: [Modality.AUDIO],
-            tools: [{ functionDeclarations: [MEDIA_PLAYER_TOOL] }],
+            // Enable Google Search so the model can browse the web
+            tools: [{ googleSearch: {} }, { functionDeclarations: [MEDIA_PLAYER_TOOL] }],
             speechConfig: {
                 voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } }
             },

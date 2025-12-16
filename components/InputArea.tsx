@@ -83,10 +83,12 @@ export const InputArea: React.FC<InputAreaProps> = ({
       };
       
       recognition.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
         setIsListening(false);
+        // Only log warning for permission issues to avoid annoying alerts
         if (event.error === 'not-allowed') {
-           alert("Microphone access denied. Please allow microphone permissions.");
+           console.warn("Microphone access denied by user.");
+        } else {
+           console.error("Speech recognition error:", event.error);
         }
       };
 
@@ -110,7 +112,11 @@ export const InputArea: React.FC<InputAreaProps> = ({
     } else {
       // Capture current text as base before starting new session
       baseTextRef.current = text;
-      recognitionRef.current.start();
+      try {
+        recognitionRef.current.start();
+      } catch (e) {
+        console.error("Failed to start speech recognition", e);
+      }
     }
   };
 

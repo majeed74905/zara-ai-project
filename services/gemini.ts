@@ -99,6 +99,12 @@ If asked "Who created you?", "Who made you?", "Who is your developer?" or about 
 - **CORE FACT**: You were created by **Mohammed Majeed** 👨‍💻 and trained on the **Google Gemini** model.
 - **ACTION**: State this fact clearly in the **EXACT language/style** the user is speaking.
 
+**GITHUB REPOSITORY ANALYST:**
+If the user provides a GitHub repository link:
+1.  **Analyze**: Detect the link automatically. The system will provide you with the README content.
+2.  **Explain**: Provide a clear, professional overview of the project, its tech stack, architecture, and purpose.
+3.  **Code**: If asked, extract relevant code snippets or explain specific files based on standard project structures.
+
 ====================================================================
 ## 1. POLYGLOT AUDIO PROTOCOL (HIGHEST PRIORITY - STRICT)
 ====================================================================
@@ -327,6 +333,22 @@ export const extractMediaAction = (text: string): { cleanText: string, mediaActi
   return { cleanText: text, mediaAction: null };
 };
 
+// --- GITHUB FETCH HELPER ---
+const fetchGithubReadme = async (owner: string, repo: string): Promise<string | null> => {
+  const branches = ['main', 'master', 'dev'];
+  for (const branch of branches) {
+    try {
+      const res = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/README.md`);
+      if (res.ok) {
+        return await res.text();
+      }
+    } catch (e) {
+      // Continue to next branch
+    }
+  }
+  return null;
+};
+
 // --- CORE CHAT FUNCTION WITH QUOTA FALLBACK ---
 export const sendMessageToGeminiStream = async (
   history: Message[],
@@ -348,8 +370,29 @@ export const sendMessageToGeminiStream = async (
     });
   });
   
-  if (newMessage || currentParts.length === 0) {
-      currentParts.push({ text: newMessage || " " });
+  // --- GITHUB AUTO-DETECTION ---
+  const githubRegex = /https?:\/\/github\.com\/([a-zA-Z0-9-_.]+)\/([a-zA-Z0-9-_.]+)/;
+  const match = newMessage.match(githubRegex);
+  let finalUserMessage = newMessage;
+
+  if (match) {
+    const owner = match[1];
+    const repo = match[2];
+    onUpdate(`Analyzing GitHub Repository: ${owner}/${repo}...`);
+    try {
+      const readme = await fetchGithubReadme(owner, repo);
+      if (readme) {
+        finalUserMessage = `${newMessage}\n\n[SYSTEM: AUTOMATED GITHUB ANALYSIS]\nI have detected a GitHub repository link: ${match[0]}.\nHere is the fetched README.md content to help you analyze it:\n\n${readme.slice(0, 25000)}\n\n(End of README)\n\nPlease provide a comprehensive analysis of this project, its structure, tech stack, and purpose.`;
+      } else {
+        finalUserMessage = `${newMessage}\n\n[SYSTEM: GITHUB LINK DETECTED]\nI could not automatically fetch the raw README (it might be private or empty). Please use Grounding (Search) to analyze ${match[0]}.`;
+      }
+    } catch (e) {
+      console.warn("Failed to fetch repo readme", e);
+    }
+  }
+
+  if (finalUserMessage || currentParts.length === 0) {
+      currentParts.push({ text: finalUserMessage || " " });
   }
 
   const contents: Content[] = [...formattedHistory, { role: Role.USER, parts: currentParts }];
@@ -371,7 +414,7 @@ export const sendMessageToGeminiStream = async (
     }
   }
 
-  if (config.useGrounding) {
+  if (config.useGrounding || match) { // Auto-enable grounding if GitHub link detected as fallback
     requestConfig['tools'] = [{ googleSearch: {} }];
   }
   
