@@ -1,13 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, Zap, MessageSquare, Clock, Calendar, Hammer, Brain } from 'lucide-react';
-import { ViewMode } from '../../types';
+import { ViewMode, PersonalizationConfig } from '../../types';
 
 interface HomeDashboardProps {
   onViewChange: (view: ViewMode) => void;
+  personalization: PersonalizationConfig;
 }
 
-export const HomeDashboard: React.FC<HomeDashboardProps> = ({ onViewChange }) => {
+export const HomeDashboard: React.FC<HomeDashboardProps> = ({ onViewChange, personalization }) => {
   const [greeting, setGreeting] = useState('');
   
   useEffect(() => {
@@ -22,7 +23,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ onViewChange }) =>
       <div className="mb-8 flex justify-between items-end">
         <div>
           <h2 className="text-4xl font-bold bg-gradient-to-r from-primary via-purple-500 to-accent bg-clip-text text-transparent mb-2">
-            {greeting}, Guest
+            {greeting}{personalization.nickname ? `, ${personalization.nickname}` : ''}
           </h2>
           <p className="text-text-sub">Here is your daily Zara AI snapshot.</p>
         </div>
@@ -95,7 +96,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ onViewChange }) =>
          <div className="bg-surface border border-border rounded-2xl p-6">
              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
                <Clock className="w-5 h-5 text-text-sub" /> Recent Activity
-            </h3>
+             </h3>
             <div className="space-y-4">
                {[1, 2, 3].map((_, i) => (
                   <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-surfaceHighlight transition-colors cursor-pointer" onClick={() => onViewChange('chat')}>

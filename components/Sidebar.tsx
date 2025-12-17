@@ -63,8 +63,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { currentThemeName, setTheme } = useTheme();
 
   const toggleSimpleTheme = () => {
-    // Simple toggle logic for the sidebar button:
-    // If it's light (or glass/pastel), go dark. Otherwise go light.
     const isLightAligned = ['light', 'glass', 'pastel'].includes(currentThemeName);
     setTheme(isLightAligned ? 'dark' : 'light');
   };
@@ -110,7 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <div 
       className={`${
         isOpen ? 'translate-x-0' : '-translate-x-full'
-      } fixed md:relative z-30 w-[280px] h-full bg-gradient-to-b from-surface/95 via-surface/90 to-primary/10 backdrop-blur-xl border-r border-white/10 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 overflow-hidden shadow-2xl md:shadow-none`}
+      } fixed md:relative z-40 w-[280px] h-full bg-gradient-to-b from-surface/95 via-surface/90 to-primary/10 backdrop-blur-xl border-r border-white/10 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 overflow-hidden shadow-2xl md:shadow-none`}
     >
       {/* Header */}
       <div className="p-6 pb-2 flex-shrink-0">
@@ -141,7 +139,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="space-y-1">
           <p className="px-2 text-[10px] font-bold text-text-sub/40 uppercase tracking-widest mb-2">Core</p>
           <NavItem icon={MessageSquare} label="Chat" active={currentView === 'chat'} onClick={() => onViewChange('chat')} />
-          {/* Memory removed from sidebar as requested */}
           
           <p className="px-2 text-[10px] font-bold text-text-sub/40 uppercase tracking-widest mt-6 mb-2">Studio</p>
           <NavItem icon={Radio} label="Live" active={currentView === 'live'} onClick={() => onViewChange('live')} />
@@ -232,19 +229,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Footer */}
       <div className="flex-shrink-0 p-4 border-t border-border space-y-2 bg-background/50 backdrop-blur">
-        
         <div className="grid grid-cols-2 gap-2">
-            <button onClick={toggleSimpleTheme} className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl transition-all text-text-sub hover:bg-surfaceHighlight/50">
+            <button onClick={toggleSimpleTheme} className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl transition-all text-text-sub hover:bg-surfaceHighlight/50" title="Toggle Theme">
                {['light', 'glass', 'pastel'].includes(currentThemeName) ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-            <button onClick={() => onViewChange('settings')} className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl transition-all ${currentView === 'settings' ? 'bg-primary/10 text-primary' : 'text-text-sub hover:bg-surfaceHighlight/50'}`}>
+            <button onClick={() => onViewChange('settings')} className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl transition-all text-text-sub hover:bg-surfaceHighlight/50 hover:text-primary" title="Settings">
                 <Settings className="w-5 h-5" />
             </button>
         </div>
-        
         <div className="flex items-center justify-between pt-1">
-           <button onClick={() => onViewChange('about')} className="text-[10px] text-text-sub hover:text-primary w-full text-center flex items-center justify-center gap-1">
-              <Info className="w-3 h-3" /> About
+           <button onClick={() => onViewChange('about')} className="text-[10px] text-text-sub hover:text-primary w-full text-center flex items-center justify-center gap-1 uppercase font-bold tracking-widest">
+              <Info className="w-3 h-3" /> About Zara
            </button>
         </div>
       </div>
@@ -252,7 +247,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile overlay backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 z-[-1] md:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-black/80 z-[-1] md:hidden backdrop-blur-md"
           onClick={onClose}
         />
       )}

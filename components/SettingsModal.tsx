@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, User, Settings as SettingsIcon, Monitor, UserPlus, Trash2, Edit2, Zap, Volume2, Layout, Smartphone } from 'lucide-react';
+import { X, Save, User, Settings as SettingsIcon, Monitor, UserPlus, Trash2, Edit2, Zap, Volume2, Layout, Sparkles, MessageSquare, Plus, Check } from 'lucide-react';
 import { PersonalizationConfig, Persona, SystemConfig, ChatConfig } from '../types';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { APP_VERSION } from '../constants/appConstants';
@@ -31,7 +31,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
 
-  // Sync props to temp state when modal opens
   useEffect(() => {
     if (isOpen) {
       setTempPersonalization(personalization);
@@ -86,309 +85,274 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  // Helper to handle theme selection and auto-disable adaptive mode
-  const handleThemeSelect = () => {
-    if (systemConfig.autoTheme) {
-        setSystemConfig({ autoTheme: false });
-    }
-  };
-
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-surface border border-border rounded-2xl w-full max-w-5xl h-[85vh] shadow-2xl flex overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in overflow-hidden">
+      <div className="bg-[#09090b] border border-white/10 rounded-[32px] w-full max-w-6xl h-[90vh] shadow-2xl flex overflow-hidden">
         
-        {/* Sidebar */}
-        <div className="w-64 bg-surfaceHighlight/50 border-r border-border flex flex-col p-4 hidden md:flex">
-          <div className="px-2 mb-6">
-            <h2 className="text-xl font-bold text-text">Settings</h2>
-            <p className="text-xs text-text-sub">Global Configuration</p>
+        {/* Sidebar Navigation */}
+        <div className="w-[300px] bg-[#09090b] border-r border-white/5 flex flex-col p-8 flex-shrink-0">
+          <div className="mb-12">
+            <h2 className="text-3xl font-black text-white tracking-tight">Settings</h2>
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-2">Unified configuration</p>
           </div>
           
-          <nav className="space-y-1 flex-1">
+          <nav className="space-y-2 flex-1">
             <button
-              onClick={() => setActiveTab('system')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'system' ? 'bg-primary/10 text-primary border border-primary/10' : 'text-text-sub hover:bg-surface hover:text-text'
+              onClick={() => { setActiveTab('system'); setEditingPersona(null); }}
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${
+                activeTab === 'system' ? 'bg-primary/20 text-primary border border-primary/20 shadow-xl shadow-primary/5' : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'
               }`}
             >
-              <Monitor className="w-4 h-4" /> System & Appearance
+              <Monitor className="w-5 h-5" /> System & UI
             </button>
             <button
-              onClick={() => setActiveTab('personalization')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'personalization' ? 'bg-primary/10 text-primary border border-primary/10' : 'text-text-sub hover:bg-surface hover:text-text'
+              onClick={() => { setActiveTab('personalization'); setEditingPersona(null); }}
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${
+                activeTab === 'personalization' ? 'bg-primary/20 text-primary border border-primary/20 shadow-xl shadow-primary/5' : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'
               }`}
             >
-              <User className="w-4 h-4" /> Personalization
+              <User className="w-5 h-5" /> Personalization
             </button>
             <button
-              onClick={() => setActiveTab('personas')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'personas' ? 'bg-primary/10 text-primary border border-primary/10' : 'text-text-sub hover:bg-surface hover:text-text'
+              onClick={() => { setActiveTab('personas'); setEditingPersona(null); }}
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${
+                activeTab === 'personas' ? 'bg-primary/20 text-primary border border-primary/20 shadow-xl shadow-primary/5' : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'
               }`}
             >
-              <UserPlus className="w-4 h-4" /> AI Personas
+              <UserPlus className="w-5 h-5" /> AI Personas
             </button>
           </nav>
           
-          <div className="mt-auto border-t border-border pt-4 px-2 space-y-2">
-            <div className="text-[10px] text-text-sub text-center opacity-60">{APP_VERSION}</div>
+          <div className="mt-auto pt-8 border-t border-white/5 flex flex-col gap-4">
+            <div className="text-[11px] text-gray-600 font-bold uppercase text-center tracking-widest">{APP_VERSION}</div>
+            <button onClick={onClose} className="w-full py-4 text-sm font-bold text-gray-400 hover:text-white flex items-center justify-center gap-2 group transition-colors">
+               <X className="w-4 h-4 group-hover:rotate-90 transition-transform" /> Close
+            </button>
           </div>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 flex flex-col bg-background min-w-0">
-          <div className="flex justify-between items-center p-6 border-b border-border bg-surface/50 backdrop-blur-sm sticky top-0 z-10">
-             <h3 className="text-lg font-bold text-text">
-               {activeTab === 'system' && 'System Configuration'}
-               {activeTab === 'personalization' && 'User Profile'}
-               {activeTab === 'personas' && 'Manage Personas'}
-             </h3>
-             <button onClick={onClose} className="p-2 hover:bg-surfaceHighlight rounded-full text-text-sub hover:text-text transition-colors">
-               <X className="w-5 h-5" />
-             </button>
+        <div className="flex-1 flex flex-col bg-[#020203] min-w-0">
+          {/* Section Header */}
+          <div className="px-12 pt-10 pb-4 flex justify-between items-center">
+             <div>
+                <h3 className="text-2xl font-black text-white">
+                  {activeTab === 'system' && 'System & UI Preferences'}
+                  {activeTab === 'personalization' && 'Personalization'}
+                  {activeTab === 'personas' && 'AI Personas'}
+                </h3>
+                <p className="text-sm font-medium text-gray-500 mt-1">
+                  {activeTab === 'system' && 'Customize look, feel, and behavior.'}
+                  {activeTab === 'personalization' && 'Customize how Zara interacts with you.'}
+                  {activeTab === 'personas' && 'Create custom characters for Zara to enact.'}
+                </p>
+             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
+          {/* Main Scroller */}
+          <div className="flex-1 overflow-y-auto px-12 py-8 custom-scrollbar">
             
             {/* --- SYSTEM TAB --- */}
             {activeTab === 'system' && (
-              <div className="space-y-8 max-w-3xl mx-auto">
-                
-                {/* Theme Section */}
+              <div className="space-y-12 animate-fade-in">
+                {/* Auto Sync Toggle Card */}
+                <div className="bg-[#09090b] border border-white/5 p-8 rounded-[32px] flex items-center justify-between group hover:border-primary/30 transition-all shadow-xl">
+                   <div className="flex items-center gap-6">
+                      <div className="w-14 h-14 rounded-[20px] bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-lg shadow-primary/5">
+                         <Zap className="w-7 h-7" />
+                      </div>
+                      <div>
+                         <p className="text-lg font-black text-white">Auto-Theme Sync</p>
+                         <p className="text-sm font-medium text-gray-500 mt-1">Change theme automatically based on active mode</p>
+                      </div>
+                   </div>
+                   <label className="relative inline-flex items-center cursor-pointer scale-125">
+                     <input 
+                       type="checkbox" 
+                       checked={systemConfig.autoTheme} 
+                       onChange={(e) => setSystemConfig({ autoTheme: e.target.checked })} 
+                       className="sr-only peer" 
+                     />
+                     <div className="w-11 h-6 bg-[#18181b] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary shadow-inner"></div>
+                   </label>
+                </div>
+
+                {/* Interface Theme Grid Section */}
                 <section>
-                  <div className="flex items-center gap-2 mb-4">
-                     <SettingsIcon className="w-5 h-5 text-primary" />
-                     <h4 className="text-base font-bold text-text">Interface Theme</h4>
+                  <div className="flex items-center gap-4 mb-8">
+                     <Layout className="w-5 h-5 text-gray-600" />
+                     <h4 className="text-[11px] font-black text-gray-600 uppercase tracking-[0.2em]">Interface Theme</h4>
                   </div>
-                  <div className="bg-surface border border-border rounded-xl p-6">
-                     <ThemeSwitcher onThemeSelect={handleThemeSelect} />
-                     
-                     <div className="mt-6 pt-4 border-t border-border flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                           <div className={`p-2 rounded-lg ${systemConfig.autoTheme ? 'bg-primary/20 text-primary' : 'bg-surfaceHighlight text-text-sub'}`}>
-                              <Zap className="w-5 h-5" />
-                           </div>
-                           <div>
-                              <p className="font-bold text-sm text-text">Adaptive Theme Sync</p>
-                              <p className="text-xs text-text-sub">Automatically switch themes based on current mode (e.g. Coding uses Midnight).</p>
-                           </div>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input 
-                            type="checkbox" 
-                            checked={systemConfig.autoTheme} 
-                            onChange={(e) => setSystemConfig({ autoTheme: e.target.checked })} 
-                            className="sr-only peer" 
-                          />
-                          <div className="w-11 h-6 bg-surfaceHighlight border border-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                        </label>
-                     </div>
-                  </div>
-                </section>
-
-                {/* UX Preferences */}
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                     <Layout className="w-5 h-5 text-primary" />
-                     <h4 className="text-base font-bold text-text">Interface Density & Effects</h4>
-                  </div>
-                  <div className="bg-surface border border-border rounded-xl overflow-hidden divide-y divide-border">
-                     
-                     {/* Density Toggle */}
-                     <div className="p-4 flex items-center justify-between hover:bg-surfaceHighlight/50 transition-colors">
-                        <div className="flex items-center gap-3">
-                           <Smartphone className="w-5 h-5 text-text-sub" />
-                           <div>
-                              <p className="font-medium text-sm text-text">Compact Mode</p>
-                              <p className="text-xs text-text-sub">Decrease padding for higher information density.</p>
-                           </div>
-                        </div>
-                        <select 
-                          value={systemConfig.density}
-                          onChange={(e) => setSystemConfig({ density: e.target.value as any })}
-                          className="bg-surfaceHighlight border border-border text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-primary"
-                        >
-                           <option value="comfortable">Comfortable</option>
-                           <option value="compact">Compact</option>
-                        </select>
-                     </div>
-
-                     {/* Sound Effects */}
-                     <div className="p-4 flex items-center justify-between hover:bg-surfaceHighlight/50 transition-colors">
-                        <div className="flex items-center gap-3">
-                           <Volume2 className="w-5 h-5 text-text-sub" />
-                           <div>
-                              <p className="font-medium text-sm text-text">Sound Effects</p>
-                              <p className="text-xs text-text-sub">Play subtle sounds for messages and actions.</p>
-                           </div>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input 
-                            type="checkbox" 
-                            checked={systemConfig.soundEffects} 
-                            onChange={(e) => setSystemConfig({ soundEffects: e.target.checked })} 
-                            className="sr-only peer" 
-                          />
-                          <div className="w-9 h-5 bg-surfaceHighlight border border-border rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-sub after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-white"></div>
-                        </label>
-                     </div>
-
-                  </div>
+                  <ThemeSwitcher onThemeSelect={() => setSystemConfig({ autoTheme: false })} />
                 </section>
               </div>
             )}
 
             {/* --- PERSONALIZATION TAB --- */}
             {activeTab === 'personalization' && (
-              <div className="space-y-8 max-w-3xl mx-auto">
-                <div className="bg-surface border border-border rounded-xl p-6 space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-xs font-bold text-text-sub uppercase mb-2">Nickname</label>
-                      <input 
-                        type="text" 
-                        value={tempPersonalization.nickname} 
-                        onChange={(e) => setTempPersonalization({...tempPersonalization, nickname: e.target.value})} 
-                        className="w-full bg-surfaceHighlight border border-border rounded-lg px-4 py-2.5 text-text focus:outline-none focus:border-primary text-sm transition-all" 
-                        placeholder="How should AI address you?"
+              <div className="space-y-12 animate-fade-in pb-10">
+                
+                {/* Identity Section */}
+                <section>
+                   <div className="flex items-center gap-4 mb-8">
+                      <Sparkles className="w-5 h-5 text-gray-600" />
+                      <h4 className="text-[11px] font-black text-gray-600 uppercase tracking-[0.2em]">About You</h4>
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-3">
+                         <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Nickname</label>
+                         <input 
+                           type="text" 
+                           value={tempPersonalization.nickname} 
+                           onChange={(e) => setTempPersonalization({...tempPersonalization, nickname: e.target.value})} 
+                           className="w-full bg-[#09090b] border border-white/5 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-primary transition-all text-sm font-medium shadow-inner" 
+                           placeholder="How Zara addresses you..."
+                         />
+                      </div>
+                      <div className="space-y-3">
+                         <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Occupation</label>
+                         <input 
+                           type="text" 
+                           value={tempPersonalization.occupation} 
+                           onChange={(e) => setTempPersonalization({...tempPersonalization, occupation: e.target.value})} 
+                           className="w-full bg-[#09090b] border border-white/5 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-primary transition-all text-sm font-medium shadow-inner" 
+                           placeholder="Your primary role..."
+                         />
+                      </div>
+                   </div>
+                </section>
+
+                {/* AI Response Style Grid */}
+                <section>
+                   <div className="flex items-center gap-4 mb-8">
+                      <MessageSquare className="w-5 h-5 text-gray-600" />
+                      <h4 className="text-[11px] font-black text-gray-600 uppercase tracking-[0.2em]">AI Response Style</h4>
+                   </div>
+                   <div className="bg-[#09090b] border border-white/5 p-2 rounded-[24px] grid grid-cols-3 gap-2 shadow-xl">
+                      {(['concise', 'balanced', 'detailed'] as const).map((style) => (
+                         <button
+                           key={style}
+                           onClick={() => setTempPersonalization({...tempPersonalization, responseStyle: style})}
+                           className={`py-4 rounded-[18px] text-[11px] font-black uppercase tracking-widest transition-all ${
+                             tempPersonalization.responseStyle === style 
+                               ? 'bg-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]' 
+                               : 'text-gray-500 hover:text-gray-200 hover:bg-white/5'
+                           }`}
+                         >
+                            {style}
+                         </button>
+                      ))}
+                   </div>
+                </section>
+
+                {/* Deep Context Textareas */}
+                <section className="space-y-10">
+                   <div className="space-y-3">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Bio & Identity</label>
+                      <textarea 
+                        value={tempPersonalization.aboutYou} 
+                        onChange={(e) => setTempPersonalization({...tempPersonalization, aboutYou: e.target.value})} 
+                        className="w-full bg-[#09090b] border border-white/5 rounded-[32px] px-6 py-5 text-white focus:outline-none focus:border-primary text-sm font-medium min-h-[160px] resize-none shadow-inner" 
+                        placeholder="Tell Zara about your background, hobbies, or life goals..."
                       />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-text-sub uppercase mb-2">Occupation / Role</label>
-                      <input 
-                        type="text" 
-                        value={tempPersonalization.occupation} 
-                        onChange={(e) => setTempPersonalization({...tempPersonalization, occupation: e.target.value})} 
-                        className="w-full bg-surfaceHighlight border border-border rounded-lg px-4 py-2.5 text-text focus:outline-none focus:border-primary text-sm transition-all" 
-                        placeholder="e.g. Student, Developer"
+                   </div>
+                   <div className="space-y-3">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Behavioral Rules</label>
+                      <textarea 
+                        value={tempPersonalization.customInstructions} 
+                        onChange={(e) => setTempPersonalization({...tempPersonalization, customInstructions: e.target.value})} 
+                        className="w-full bg-[#09090b] border border-white/5 rounded-[32px] px-6 py-5 text-white focus:outline-none focus:border-primary text-sm font-mono min-h-[160px] resize-none shadow-inner" 
+                        placeholder="e.g. Always think step-by-step. Use Markdown for all lists. Avoid emojis unless requested."
                       />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-text-sub uppercase mb-2">Default Response Style</label>
-                    <div className="grid grid-cols-3 gap-3">
-                       {['concise', 'balanced', 'detailed'].map((style) => (
-                          <button
-                            key={style}
-                            onClick={() => setTempPersonalization({...tempPersonalization, responseStyle: style as any})}
-                            className={`py-2 rounded-lg text-sm font-medium border capitalize transition-all ${
-                               tempPersonalization.responseStyle === style 
-                                 ? 'bg-primary/10 border-primary text-primary' 
-                                 : 'bg-surfaceHighlight border-transparent text-text-sub hover:bg-surface'
-                            }`}
-                          >
-                             {style}
-                          </button>
-                       ))}
-                    </div>
-                    <p className="text-xs text-text-sub mt-2">
-                       {tempPersonalization.responseStyle === 'concise' && "Short, direct answers. No fluff."}
-                       {tempPersonalization.responseStyle === 'balanced' && "Standard length with clear explanations."}
-                       {tempPersonalization.responseStyle === 'detailed' && "In-depth, comprehensive answers with examples."}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-text-sub uppercase mb-2">Context & About You</label>
-                    <textarea 
-                      value={tempPersonalization.aboutYou} 
-                      onChange={(e) => setTempPersonalization({...tempPersonalization, aboutYou: e.target.value})} 
-                      className="w-full bg-surfaceHighlight border border-border rounded-lg px-4 py-3 text-text focus:outline-none focus:border-primary text-sm min-h-[100px] resize-none transition-all" 
-                      placeholder="Tell Zara about your goals, interests, or background to get better responses..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-text-sub uppercase mb-2">Custom Instructions</label>
-                    <textarea 
-                      value={tempPersonalization.customInstructions} 
-                      onChange={(e) => setTempPersonalization({...tempPersonalization, customInstructions: e.target.value})} 
-                      className="w-full bg-surfaceHighlight border border-border rounded-lg px-4 py-3 text-text focus:outline-none focus:border-primary text-sm min-h-[100px] resize-none transition-all" 
-                      placeholder="e.g. Always answer concisely. Never use emojis. Explain things like I'm 5."
-                    />
-                  </div>
-                </div>
+                   </div>
+                </section>
               </div>
             )}
 
             {/* --- PERSONAS TAB --- */}
             {activeTab === 'personas' && (
-               <div className="space-y-6 max-w-3xl mx-auto">
-                 <div className="flex justify-between items-center bg-surface border border-border p-4 rounded-xl">
-                    <div>
-                      <h3 className="font-bold text-text">Custom Personas</h3>
-                      <p className="text-xs text-text-sub">Create specialized AI characters for different tasks.</p>
+               <div className="space-y-8 animate-fade-in pb-10">
+                 <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-4">
+                       <UserPlus className="w-5 h-5 text-gray-600" />
+                       <h4 className="text-[11px] font-black text-gray-600 uppercase tracking-[0.2em]">Manage Custom Agents</h4>
                     </div>
                     {!editingPersona && (
-                      <button onClick={handleAddPersona} className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all">
-                        <UserPlus className="w-4 h-4" /> Create New
+                      <button onClick={handleAddPersona} className="bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-3 transition-all shadow-2xl shadow-primary/20 active:scale-95">
+                        <Plus className="w-4 h-4" /> Create Agent
                       </button>
                     )}
                  </div>
 
                  {editingPersona ? (
-                    <div className="bg-surface border border-border p-6 rounded-xl space-y-4 animate-fade-in relative">
-                       <button onClick={() => setEditingPersona(null)} className="absolute top-4 right-4 text-text-sub hover:text-text"><X className="w-4 h-4" /></button>
-                       <h4 className="font-bold text-primary">Persona Editor</h4>
+                    <div className="bg-[#09090b] border border-primary/30 p-10 rounded-[40px] space-y-8 animate-fade-in relative shadow-2xl">
+                       <div className="flex items-center gap-3 mb-2">
+                          <Edit2 className="w-5 h-5 text-primary" />
+                          <h4 className="font-black text-2xl text-white">Editor</h4>
+                       </div>
                        
-                       <div className="space-y-4">
-                         <div>
-                           <label className="block text-xs font-medium text-text-sub mb-1">Name</label>
-                           <input 
-                             value={editingPersona.name}
-                             onChange={e => setEditingPersona({...editingPersona, name: e.target.value})}
-                             placeholder="e.g. Coding Wizard"
-                             className="w-full bg-surfaceHighlight border border-border rounded-lg p-2.5 text-sm focus:border-primary outline-none"
-                           />
+                       <div className="space-y-6">
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-3">
+                              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Agent Name</label>
+                              <input 
+                                value={editingPersona.name}
+                                onChange={e => setEditingPersona({...editingPersona, name: e.target.value})}
+                                placeholder="e.g. Python Architect"
+                                className="w-full bg-[#020203] border border-white/10 rounded-2xl px-6 py-4 text-white focus:border-primary outline-none text-sm font-bold shadow-inner"
+                              />
+                            </div>
+                            <div className="space-y-3">
+                              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Short Description</label>
+                              <input 
+                                value={editingPersona.description}
+                                onChange={e => setEditingPersona({...editingPersona, description: e.target.value})}
+                                placeholder="Expert code reviewer..."
+                                className="w-full bg-[#020203] border border-white/10 rounded-2xl px-6 py-4 text-white focus:border-primary outline-none text-sm font-bold shadow-inner"
+                              />
+                            </div>
                          </div>
-                         <div>
-                           <label className="block text-xs font-medium text-text-sub mb-1">Description</label>
-                           <input 
-                             value={editingPersona.description}
-                             onChange={e => setEditingPersona({...editingPersona, description: e.target.value})}
-                             placeholder="Short description for the menu"
-                             className="w-full bg-surfaceHighlight border border-border rounded-lg p-2.5 text-sm focus:border-primary outline-none"
-                           />
-                         </div>
-                         <div>
-                           <label className="block text-xs font-medium text-text-sub mb-1">System Prompt</label>
+                         <div className="space-y-3">
+                           <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">System Instruction</label>
                            <textarea 
                              value={editingPersona.systemPrompt}
                              onChange={e => setEditingPersona({...editingPersona, systemPrompt: e.target.value})}
-                             placeholder="Define the AI's personality, rules, and knowledge base..."
-                             className="w-full bg-surfaceHighlight border border-border rounded-lg p-2.5 text-sm h-32 resize-none focus:border-primary outline-none font-mono"
+                             placeholder="Define rules, knowledge base, and tone..."
+                             className="w-full bg-[#020203] border border-white/10 rounded-[32px] px-6 py-5 text-sm font-mono h-56 resize-none focus:border-primary outline-none text-gray-300 shadow-inner"
                            />
                          </div>
                        </div>
 
-                       <div className="flex gap-2 justify-end pt-2">
-                          <button onClick={() => setEditingPersona(null)} className="px-4 py-2 text-text-sub text-sm hover:text-text">Cancel</button>
-                          <button onClick={handleSavePersona} className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-lg shadow-primary/20"><Save className="w-3 h-3" /> Save Persona</button>
+                       <div className="flex gap-4 justify-end pt-4">
+                          <button onClick={() => setEditingPersona(null)} className="px-8 py-4 text-gray-500 font-bold hover:text-white transition-colors">Cancel</button>
+                          <button onClick={handleSavePersona} className="bg-primary text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest flex items-center gap-3 shadow-2xl shadow-primary/20"><Save className="w-4 h-4" /> Save Persona</button>
                        </div>
                     </div>
                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                        {personas.length === 0 && (
-                          <div className="col-span-2 text-center py-12 border-2 border-dashed border-border rounded-xl text-text-sub">
-                             <UserPlus className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                             <p className="text-sm">No custom personas yet.</p>
+                          <div className="col-span-2 text-center py-24 border-2 border-dashed border-white/5 rounded-[48px] text-gray-600 bg-white/[0.01]">
+                             <UserPlus className="w-16 h-16 mx-auto mb-6 opacity-10" />
+                             <p className="font-black text-lg uppercase tracking-widest opacity-40">No custom agents found</p>
+                             <p className="text-sm mt-2 opacity-30">Start by creating a persona for specific tasks.</p>
                           </div>
                        )}
                        {personas.map(p => (
-                          <div key={p.id} className="bg-surface border border-border rounded-xl p-5 hover:border-primary/50 transition-colors group relative flex flex-col">
-                             <div className="flex justify-between items-start mb-2">
-                                <h4 className="font-bold text-text truncate">{p.name}</h4>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                   <button onClick={() => setEditingPersona(p)} className="p-1.5 hover:bg-surfaceHighlight rounded text-primary"><Edit2 className="w-3.5 h-3.5" /></button>
-                                   <button onClick={() => handleDeletePersona(p.id)} className="p-1.5 hover:bg-surfaceHighlight rounded text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                          <div key={p.id} className="bg-[#09090b] border border-white/5 rounded-[40px] p-8 hover:border-primary/50 transition-all group relative flex flex-col hover:bg-[#0c0c0e] hover:-translate-y-1 shadow-xl">
+                             <div className="flex justify-between items-start mb-4">
+                                <h4 className="font-black text-xl text-white group-hover:text-primary transition-colors">{p.name}</h4>
+                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
+                                   <button onClick={() => setEditingPersona(p)} className="p-3 bg-white/5 hover:bg-primary/20 rounded-2xl text-primary transition-colors"><Edit2 className="w-4 h-4" /></button>
+                                   <button onClick={() => handleDeletePersona(p.id)} className="p-3 bg-white/5 hover:bg-red-500/20 rounded-2xl text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                                 </div>
                              </div>
-                             <p className="text-xs text-text-sub line-clamp-2 mb-3 flex-1">{p.description}</p>
-                             <div className="text-[10px] bg-surfaceHighlight self-start px-2 py-1 rounded text-text-sub font-mono">ID: {p.id.slice(0,8)}</div>
+                             <p className="text-sm text-gray-500 line-clamp-2 mb-6 leading-relaxed font-medium">{p.description}</p>
+                             <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between">
+                                <span className="text-[10px] font-black text-gray-700 uppercase tracking-widest">ID: {p.id.slice(0,8)}</span>
+                                <div className="w-2.5 h-2.5 rounded-full bg-primary/20 shadow-[0_0_8px_rgba(139,92,246,0.3)]" />
+                             </div>
                           </div>
                        ))}
                     </div>
@@ -397,11 +361,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
           </div>
 
-          <div className="p-4 border-t border-border bg-surface/80 backdrop-blur-md flex justify-end gap-3">
-             <button onClick={onClose} className="px-5 py-2.5 text-text-sub hover:text-text transition-colors text-sm font-medium hover:bg-surfaceHighlight rounded-lg">Cancel</button>
-             <button onClick={handleSave} className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg shadow-primary/20 active:scale-95">
-               <Save className="w-4 h-4" /> Save Changes
-             </button>
+          {/* Bottom Control Bar */}
+          <div className="px-12 py-8 border-t border-white/5 bg-[#020203]/90 backdrop-blur-2xl flex justify-between items-center flex-shrink-0">
+             <div className="hidden md:flex items-center gap-2 text-gray-600 text-[10px] font-black uppercase tracking-[0.2em]">
+                <SettingsIcon className="w-4 h-4" /> Zara Core Config
+             </div>
+             <div className="flex gap-4">
+                <button onClick={onClose} className="px-10 py-4 text-gray-500 font-bold hover:text-white rounded-2xl hover:bg-white/5 transition-all uppercase text-[11px] tracking-widest">Cancel</button>
+                <button onClick={handleSave} className="flex items-center gap-3 bg-primary hover:bg-primary-dark text-white px-12 py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-[0_20px_40px_rgba(139,92,246,0.25)] active:scale-95 group">
+                  <Save className="w-5 h-5 group-hover:rotate-12 transition-transform" /> Save Changes
+                </button>
+             </div>
           </div>
         </div>
       </div>

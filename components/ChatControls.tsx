@@ -1,34 +1,32 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Shield, FileText, Zap, Brain, Sparkles, Scale, GraduationCap, AlertCircle, Eye, EyeOff, Layers, Heart, Search, Activity, RefreshCw, ChevronDown, Cpu, Leaf, Gauge, Settings2, X, MessageSquare, User, Code2, CheckCircle2 } from 'lucide-react';
-import { ChatConfig } from '../types';
+import { ChevronDown, MessageSquare, GraduationCap, Code2, Heart, Scale, Zap, Cpu, Leaf, Check, Settings2, X, Shield, Brain, Sparkles, Activity, AlertCircle, Eye, EyeOff, Search, FileText, RefreshCw, Layers, Gauge, Download, FileType, FileJson, FileOutput, Share } from 'lucide-react';
+import { ChatConfig, ChatSession } from '../types';
+import { exportChatToMarkdown, exportChatToText, exportChatToPDF } from '../utils/exportUtils';
 
 interface ChatControlsProps {
   config: ChatConfig;
   setConfig: React.Dispatch<React.SetStateAction<ChatConfig>>;
+  currentSession: ChatSession | null;
 }
 
 type ZaraPreset = 'fast' | 'eco' | 'high-iq';
 
-export const ChatControls: React.FC<ChatControlsProps> = ({ config, setConfig }) => {
+export const ChatControls: React.FC<ChatControlsProps> = ({ config, setConfig, currentSession }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showModelMenu, setShowModelMenu] = useState(false);
-  const [showModeMenu, setShowModeMenu] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<'model' | 'persona' | 'export' | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowModelMenu(false);
-        setShowModeMenu(false);
+        setActiveMenu(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Determine current preset based on config
   const getCurrentPreset = (): ZaraPreset => {
     if (config.useThinking) return 'high-iq';
     if (config.model.includes('lite')) return 'eco';
@@ -37,154 +35,131 @@ export const ChatControls: React.FC<ChatControlsProps> = ({ config, setConfig })
 
   const currentPreset = getCurrentPreset();
 
-  const applyPreset = (preset: ZaraPreset) => {
+  const applyModel = (preset: ZaraPreset) => {
     switch (preset) {
       case 'fast':
-        setConfig(prev => ({ ...prev, model: 'gemini-2.5-flash', useThinking: false }));
+        setConfig(prev => ({ ...prev, model: 'gemini-3-flash-preview', useThinking: false }));
         break;
       case 'eco':
         setConfig(prev => ({ ...prev, model: 'gemini-flash-lite-latest', useThinking: false }));
         break;
       case 'high-iq':
-        setConfig(prev => ({ ...prev, model: 'gemini-3-pro-preview', useThinking: true })); // Using Pro for High IQ
+        setConfig(prev => ({ ...prev, model: 'gemini-3-pro-preview', useThinking: true }));
         break;
     }
-    setShowModelMenu(false);
+    setActiveMenu(null);
   };
 
   const toggleFeature = (key: keyof ChatConfig) => {
     setConfig(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const setInteraction = (mode: ChatConfig['interactionMode']) => {
-    setConfig(prev => ({ ...prev, interactionMode: mode }));
+  const getModeInfo = (mode: string) => {
+    switch (mode) {
+      case 'teacher': return { label: 'Teacher', icon: GraduationCap };
+      case 'developer': return { label: 'Developer', icon: Code2 };
+      case 'friend': return { label: 'Friend', icon: Heart };
+      case 'examiner': return { label: 'Examiner', icon: Scale };
+      default: return { label: 'Standard', icon: MessageSquare };
+    }
   };
 
-  const activeFeatureCount = Object.entries(config).filter(([k, v]) => 
-    typeof v === 'boolean' && v === true && !['useThinking', 'useGrounding'].includes(k)
-  ).length;
-
-  const getModeLabel = (mode: string) => {
-      switch(mode) {
-          case 'teacher': return { label: 'Teacher', icon: GraduationCap };
-          case 'developer': return { label: 'Developer', icon: Code2 };
-          case 'friend': return { label: 'Friend', icon: Heart };
-          case 'examiner': return { label: 'Examiner', icon: Scale };
-          default: return { label: 'Standard', icon: MessageSquare };
-      }
-  };
-
-  const currentModeInfo = getModeLabel(config.interactionMode);
+  const currentModeInfo = getModeInfo(config.interactionMode);
   const ModeIcon = currentModeInfo.icon;
 
   const FeatureToggle = ({ id, label, icon: Icon, color }: any) => (
     <button 
       onClick={() => toggleFeature(id)} 
-      className={`px-3 py-2.5 text-left text-xs font-medium flex items-center justify-between rounded-xl transition-all border ${
+      className={`px-3 py-2.5 text-left text-xs font-medium flex items-center justify-between rounded-xl border transition-all ${
         config[id as keyof ChatConfig] 
-          ? `bg-${color}-500/10 text-${color}-500 border-${color}-500/20 shadow-sm` 
-          : 'bg-surfaceHighlight/30 hover:bg-surface text-text-sub hover:text-text border-transparent hover:border-white/5'
+          ? `bg-${color}-500/10 text-${color}-500 border-${color}-500/20` 
+          : 'bg-surfaceHighlight/30 hover:bg-surface text-text-sub hover:text-text border-transparent'
       }`}
     >
       <span className="flex items-center gap-2.5"><Icon className="w-4 h-4" /> {label}</span>
-      {config[id as keyof ChatConfig] && <div className={`w-1.5 h-1.5 rounded-full bg-${color}-500 shadow-[0_0_5px_currentColor]`} />}
+      {config[id as keyof ChatConfig] && <Check className="w-3.5 h-3.5" />}
     </button>
   );
 
+  const activeFeatureCount = Object.entries(config).filter(([k, v]) => 
+    typeof v === 'boolean' && v === true && !['useThinking'].includes(k)
+  ).length;
+
+  const handleExport = (format: 'pdf' | 'md' | 'txt') => {
+    if (!currentSession) return;
+    switch (format) {
+      case 'pdf': exportChatToPDF(currentSession); break;
+      case 'md': exportChatToMarkdown(currentSession); break;
+      case 'txt': exportChatToText(currentSession); break;
+    }
+    setActiveMenu(null);
+  };
+
   return (
-    <div className="w-full bg-background/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-30 transition-all duration-300" ref={menuRef}>
-       
-       {/* Top Bar */}
-       <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-          
+    <div className="w-full bg-background/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-30" ref={menuRef}>
+       <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-              {/* --- 1. MODEL SELECTOR (Video-like UI) --- */}
+              {/* MODEL SELECTOR */}
               <div className="relative">
                  <button 
-                   onClick={() => { setShowModelMenu(!showModelMenu); setShowModeMenu(false); }}
-                   className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surfaceHighlight/50 hover:bg-surface border border-white/5 hover:border-white/10 transition-all text-sm font-medium text-text"
+                   onClick={() => setActiveMenu(activeMenu === 'model' ? null : 'model')}
+                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surfaceHighlight/50 hover:bg-surface border border-white/5 text-xs font-bold text-text"
                  >
-                    <span className="hidden sm:inline">
-                       {currentPreset === 'fast' && 'Zara Fast (Default)'}
-                       {currentPreset === 'eco' && 'Zara Lite (Eco)'}
-                       {currentPreset === 'high-iq' && 'Zara Pro (High IQ)'}
-                    </span>
-                    <span className="sm:hidden">
-                       {currentPreset === 'fast' && 'Fast'}
-                       {currentPreset === 'eco' && 'Lite'}
-                       {currentPreset === 'high-iq' && 'Pro'}
-                    </span>
+                    <span className="uppercase tracking-wider opacity-60">Model:</span>
+                    <span>{currentPreset === 'fast' ? 'Zara Fast' : currentPreset === 'eco' ? 'Zara Lite' : 'Zara Pro'}</span>
                     <ChevronDown className="w-3 h-3 text-text-sub" />
                  </button>
 
-                 {/* Custom Model Menu UI */}
-                 {showModelMenu && (
-                    <div className="absolute top-full left-0 mt-2 w-64 bg-[#18181b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 flex flex-col p-2">
-                       <div className="px-2 py-1.5 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Select Model</div>
-                       
-                       <button onClick={() => applyPreset('fast')} className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 transition-colors group">
-                          <div className="flex flex-col text-left">
-                             <span className="text-sm font-medium text-gray-200">Zara Fast</span>
-                             <span className="text-[10px] text-gray-500">Default • Balanced Speed</span>
-                          </div>
-                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${currentPreset === 'fast' ? 'border-blue-500' : 'border-gray-600 group-hover:border-gray-400'}`}>
-                             {currentPreset === 'fast' && <div className="w-2 h-2 rounded-full bg-blue-500" />}
-                          </div>
-                       </button>
-
-                       <button onClick={() => applyPreset('high-iq')} className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 transition-colors group">
-                          <div className="flex flex-col text-left">
-                             <span className="text-sm font-medium text-gray-200">Zara Pro</span>
-                             <span className="text-[10px] text-gray-500">High IQ • Reasoning</span>
-                          </div>
-                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${currentPreset === 'high-iq' ? 'border-purple-500' : 'border-gray-600 group-hover:border-gray-400'}`}>
-                             {currentPreset === 'high-iq' && <div className="w-2 h-2 rounded-full bg-purple-500" />}
-                          </div>
-                       </button>
-
-                       <button onClick={() => applyPreset('eco')} className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 transition-colors group">
-                          <div className="flex flex-col text-left">
-                             <span className="text-sm font-medium text-gray-200">Zara Lite</span>
-                             <span className="text-[10px] text-gray-500">Eco • Fastest Response</span>
-                          </div>
-                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${currentPreset === 'eco' ? 'border-green-500' : 'border-gray-600 group-hover:border-gray-400'}`}>
-                             {currentPreset === 'eco' && <div className="w-2 h-2 rounded-full bg-green-500" />}
-                          </div>
-                       </button>
+                 {activeMenu === 'model' && (
+                    <div className="absolute top-full left-0 mt-2 w-56 bg-[#18181b] border border-white/10 rounded-xl shadow-2xl z-50 p-1">
+                       {[
+                         { id: 'fast', label: 'Zara Fast', desc: 'Balanced & Quick', icon: Zap },
+                         { id: 'high-iq', label: 'Zara Pro', desc: 'Complex Reasoning', icon: Cpu },
+                         { id: 'eco', label: 'Zara Lite', desc: 'Energy Efficient', icon: Leaf }
+                       ].map((m) => (
+                          <button 
+                            key={m.id}
+                            onClick={() => applyModel(m.id as any)}
+                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 group"
+                          >
+                             <div className="flex flex-col text-left">
+                                <span className="text-xs font-bold text-gray-200">{m.label}</span>
+                                <span className="text-[10px] text-gray-500">{m.desc}</span>
+                             </div>
+                             {currentPreset === m.id && <Check className="w-4 h-4 text-primary" />}
+                          </button>
+                       ))}
                     </div>
                  )}
               </div>
 
-              {/* --- 2. INTERACTION MODE SELECTOR --- */}
+              {/* PERSONA SELECTOR */}
               <div className="relative">
                  <button 
-                   onClick={() => { setShowModeMenu(!showModeMenu); setShowModelMenu(false); }}
-                   className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surfaceHighlight/50 hover:bg-surface border border-white/5 hover:border-white/10 transition-all text-sm font-medium text-text"
+                   onClick={() => setActiveMenu(activeMenu === 'persona' ? null : 'persona')}
+                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surfaceHighlight/50 hover:bg-surface border border-white/5 text-xs font-bold text-text"
                  >
-                    <ModeIcon className="w-4 h-4 text-primary" />
-                    <span className="hidden sm:inline">{currentModeInfo.label}</span>
+                    <ModeIcon className="w-3.5 h-3.5 text-primary" />
+                    <span>{currentModeInfo.label}</span>
                     <ChevronDown className="w-3 h-3 text-text-sub" />
                  </button>
 
-                 {/* Interaction Dropdown */}
-                 {showModeMenu && (
-                    <div className="absolute top-full left-0 mt-2 w-48 bg-[#18181b] border border-white/10 rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-1">
-                       <div className="px-3 py-1.5 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Select Persona</div>
+                 {activeMenu === 'persona' && (
+                    <div className="absolute top-full left-0 mt-2 w-48 bg-[#18181b] border border-white/10 rounded-xl shadow-2xl p-1 z-50">
                        {(['standard', 'teacher', 'developer', 'friend', 'examiner'] as const).map(mode => {
-                           const info = getModeLabel(mode);
+                           const info = getModeInfo(mode);
                            const Icon = info.icon;
                            return (
                                <button 
                                  key={mode}
-                                 onClick={() => { setInteraction(mode); setShowModeMenu(false); }}
-                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 text-left transition-colors ${config.interactionMode === mode ? 'bg-white/5' : ''}`}
+                                 onClick={() => { setConfig(prev => ({ ...prev, interactionMode: mode })); setActiveMenu(null); }}
+                                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 text-left"
                                >
-                                  <div className={`p-1.5 rounded-md ${config.interactionMode === mode ? 'text-primary bg-primary/10' : 'text-text-sub bg-surfaceHighlight'}`}>
-                                    <Icon className="w-3.5 h-3.5" />
+                                  <div className="flex items-center gap-2.5">
+                                    <Icon className="w-3.5 h-3.5 text-text-sub" />
+                                    <span className="text-xs font-bold text-gray-200">{info.label}</span>
                                   </div>
-                                  <span className={`text-sm font-medium ${config.interactionMode === mode ? 'text-white' : 'text-gray-400'}`}>
-                                    {info.label}
-                                  </span>
+                                  {config.interactionMode === mode && <Check className="w-3.5 h-3.5 text-primary" />}
                                </button>
                            );
                        })}
@@ -193,86 +168,124 @@ export const ChatControls: React.FC<ChatControlsProps> = ({ config, setConfig })
               </div>
           </div>
 
-          {/* --- 3. MODULES TRIGGER --- */}
-          <button 
-            onClick={() => setIsExpanded(!isExpanded)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
-               isExpanded 
-                 ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' 
-                 : activeFeatureCount > 0
-                    ? 'bg-surfaceHighlight text-primary border-primary/30'
-                    : 'bg-transparent text-text-sub border-transparent hover:bg-surfaceHighlight'
-            }`}
-          >
-             <Settings2 className="w-4 h-4" />
-             <span className="hidden sm:inline">Modules</span>
-             {activeFeatureCount > 0 && (
-                <span className="bg-primary text-white text-[9px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center ml-1">
-                   {activeFeatureCount}
-                </span>
-             )}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* MODULES BUTTON - NOW ON THE LEFT */}
+            <button 
+              onClick={() => setIsExpanded(!isExpanded)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                isExpanded 
+                  ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' 
+                  : activeFeatureCount > 0
+                      ? 'bg-surfaceHighlight text-primary border-primary/30'
+                      : 'bg-transparent text-text-sub border-transparent hover:bg-surfaceHighlight'
+              }`}
+            >
+              <Settings2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Modules</span>
+              {activeFeatureCount > 0 && <span className="ml-1 opacity-70">[{activeFeatureCount}]</span>}
+            </button>
+
+            <div className="w-px h-6 bg-white/10 mx-1 hidden sm:block" />
+
+            {/* EXPORT BUTTON - NOW ON THE RIGHT */}
+            <div className="relative">
+              <button 
+                onClick={() => setActiveMenu(activeMenu === 'export' ? null : 'export')}
+                disabled={!currentSession || currentSession.messages.length === 0}
+                className={`p-2 rounded-lg transition-colors ${
+                  activeMenu === 'export'
+                    ? 'bg-accent/20 text-accent'
+                    : (!currentSession || currentSession.messages.length === 0)
+                      ? 'text-text-sub/30 cursor-not-allowed'
+                      : 'text-text-sub hover:text-text hover:bg-surfaceHighlight'
+                }`}
+                title="Export Conversation"
+              >
+                <Share className="w-5 h-5" />
+              </button>
+
+              {activeMenu === 'export' && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-[#18181b] border border-white/10 rounded-xl shadow-2xl p-1 z-50 animate-fade-in">
+                  <div className="px-3 py-2 text-[10px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5 mb-1">
+                    Export Format
+                  </div>
+                  {[
+                    { id: 'pdf', label: 'PDF Document', icon: FileType, desc: 'Print friendly' },
+                    { id: 'md', label: 'Markdown File', icon: FileText, desc: 'Best for notes' },
+                    { id: 'txt', label: 'Plain Text', icon: FileOutput, desc: 'Simple archive' }
+                  ].map((f) => (
+                    <button 
+                      key={f.id}
+                      onClick={() => handleExport(f.id as any)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 text-left group transition-colors"
+                    >
+                      <div className="p-1.5 rounded-md bg-white/5 text-gray-400 group-hover:text-accent transition-colors">
+                        <f.icon className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-gray-200">{f.label}</span>
+                        <span className="text-[9px] text-gray-500">{f.desc}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
        </div>
 
-       {/* Collapsible Unified Module Grid */}
+       {/* MODULES EXPANDED VIEW */}
        {isExpanded && (
-         <div className="border-t border-white/5 bg-[#09090b]/95 backdrop-blur-xl shadow-2xl absolute w-full left-0 z-40 max-h-[85vh] overflow-y-auto custom-scrollbar">
-            <div className="max-w-6xl mx-auto px-4 py-6">
-               
+         <div className="border-t border-white/5 bg-[#09090b]/95 backdrop-blur-xl shadow-2xl absolute w-full left-0 z-40 max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <div className="max-w-4xl mx-auto px-4 py-8">
                <div className="flex justify-between items-center mb-8 border-b border-white/5 pb-4">
                   <div className="flex items-center gap-2">
                     <Settings2 className="w-5 h-5 text-primary" />
                     <h3 className="text-lg font-bold text-white">Module Configuration</h3>
                   </div>
-                  <button onClick={() => setIsExpanded(false)} className="p-2 hover:bg-white/10 rounded-full text-text-sub hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+                  <button onClick={() => setIsExpanded(false)} className="p-2 hover:bg-white/10 rounded-full text-text-sub hover:text-white"><X className="w-5 h-5" /></button>
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  
-                  {/* COLUMN 1: Specialized Capabilities */}
                   <div className="space-y-6">
-                     <h4 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2">
-                        <Shield className="w-3 h-3" /> Specialized Capabilities
+                     <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2 border-b border-white/5 pb-2">
+                        <Shield className="w-3 h-3" /> Special Modes
                      </h4>
-                     
                      <div className="space-y-2">
                         <FeatureToggle id="examMode" label="Exam Mode" icon={GraduationCap} color="red" />
-                        <FeatureToggle id="integrityMode" label="Integrity Check" icon={Shield} color="green" />
+                        <FeatureToggle id="integrityMode" label="Integrity" icon={Shield} color="green" />
                         <FeatureToggle id="debateMode" label="AI Debate" icon={Scale} color="orange" />
-                        <FeatureToggle id="socraticMode" label="Socratic Method" icon={Brain} color="teal" />
+                        <FeatureToggle id="socraticMode" label="Socratic" icon={Brain} color="teal" />
                      </div>
                   </div>
 
-                  {/* COLUMN 2: Intelligence */}
                   <div className="space-y-6">
-                     <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2">
-                        <Brain className="w-3 h-3" /> Intelligence Layers
+                     <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2 border-b border-white/5 pb-2">
+                        <Brain className="w-3 h-3" /> Analysis
                      </h4>
                      <div className="grid grid-cols-1 gap-2">
-                        <FeatureToggle id="confidenceIndicator" label="Confidence Score" icon={Activity} color="blue" />
+                        <FeatureToggle id="confidenceIndicator" label="Confidence" icon={Activity} color="blue" />
                         <FeatureToggle id="errorExplanation" label="Explain Errors" icon={AlertCircle} color="yellow" />
                         <FeatureToggle id="assumptionExposure" label="Show Assumptions" icon={Eye} color="purple" />
-                        <FeatureToggle id="selfLimit" label="Self-Limit Check" icon={EyeOff} color="gray" />
+                        <FeatureToggle id="selfLimit" label="Self-Limit" icon={EyeOff} color="gray" />
                         <FeatureToggle id="learningGap" label="Gap Detector" icon={Search} color="pink" />
                         <FeatureToggle id="moodDetection" label="Mood Sense" icon={Heart} color="rose" />
                         <FeatureToggle id="useGrounding" label="Google Grounding" icon={Gauge} color="blue" />
                      </div>
                   </div>
 
-                  {/* COLUMN 3: Output Style */}
                   <div className="space-y-6">
-                     <h4 className="text-xs font-bold text-purple-400 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2">
+                     <h4 className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] flex items-center gap-2 border-b border-white/5 pb-2">
                         <Sparkles className="w-3 h-3" /> Output Style
                      </h4>
                      <div className="grid grid-cols-1 gap-2">
                         <FeatureToggle id="eli5" label="ELI5 Mode" icon={Sparkles} color="cyan" />
                         <FeatureToggle id="notesMode" label="Auto-Notes" icon={FileText} color="indigo" />
-                        <FeatureToggle id="reverseLearning" label="Reverse Learning" icon={RefreshCw} color="orange" />
+                        <FeatureToggle id="reverseLearning" label="Reverse Teach" icon={RefreshCw} color="orange" />
                         <FeatureToggle id="multiPerspective" label="Multi-View" icon={Layers} color="violet" />
                         <FeatureToggle id="failureCase" label="Failure Cases" icon={AlertCircle} color="red" />
                      </div>
                   </div>
-
                </div>
             </div>
          </div>

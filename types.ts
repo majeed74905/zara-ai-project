@@ -53,28 +53,22 @@ export interface ChatConfig {
   interactionMode: 'standard' | 'teacher' | 'developer' | 'friend' | 'examiner';
   activePersonaId?: string;
   
-  // --- Student-Centric Features ---
-  examMode?: boolean;           // Strict syllabus answers
-  integrityMode?: boolean;      // Paraphrasing & Originality Score
-  notesMode?: boolean;          // Ask -> Notes Format
-  
-  // --- Advanced Cognitive Features ---
-  socraticMode?: boolean;       // Guide via questions
-  debateMode?: boolean;         // Challenge user views
-  reverseLearning?: boolean;    // Explain wrong to test user
-  learningGap?: boolean;        // Detect missing prerequisites
-  
-  // --- Meta-Cognition & Trust ---
-  confidenceIndicator?: boolean;// High/Med/Low labels
-  assumptionExposure?: boolean; // List assumptions made
-  selfLimit?: boolean;          // Explicitly state AI limits
-  errorExplanation?: boolean;   // Explain why AI might be wrong
-  
   // --- Content Modifiers ---
-  eli5?: boolean;               // Explain Like I'm 5
-  multiPerspective?: boolean;   // 3 distinct viewpoints
-  failureCase?: boolean;        // Show real-world failure scenarios
-  moodDetection?: boolean;      // Adapt to user stress/confusion
+  eli5?: boolean;               
+  multiPerspective?: boolean;   
+  failureCase?: boolean;        
+  moodDetection?: boolean;      
+  confidenceIndicator?: boolean;
+  learningGap?: boolean;
+  examMode?: boolean;
+  integrityMode?: boolean;
+  debateMode?: boolean;
+  socraticMode?: boolean;
+  errorExplanation?: boolean;
+  assumptionExposure?: boolean;
+  selfLimit?: boolean;
+  notesMode?: boolean;
+  reverseLearning?: boolean;
 }
 
 export interface PersonalizationConfig {
@@ -83,7 +77,7 @@ export interface PersonalizationConfig {
   aboutYou: string;
   customInstructions: string;
   fontSize: 'small' | 'medium' | 'large';
-  responseStyle: 'concise' | 'balanced' | 'detailed'; // Added feature
+  responseStyle: 'concise' | 'balanced' | 'detailed'; 
 }
 
 export interface SystemConfig {
@@ -232,13 +226,6 @@ export interface AppFeedback {
   timestamp: number;
 }
 
-// Live Mode
-export interface MediaAction {
-  type: 'play_media';
-  query: string;
-  platform: 'youtube' | 'spotify';
-}
-
 // Auth & Trust Types
 export interface AuthUser {
   id: string;
@@ -260,3 +247,5 @@ export interface TrustFactors {
     recentFailure: boolean;
   };
 }
+
+export type MediaAction = 'play' | 'pause' | 'stop' | 'next' | 'prev';

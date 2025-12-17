@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type, FunctionDeclaration, Schema, Modality } from "@google/genai";
+import { GoogleGenAI, Type, FunctionDeclaration, Modality } from "@google/genai";
 import { Message, Role, ChatConfig, PersonalizationConfig, Persona, ExamConfig, ExamQuestion, StudyPlan, Flashcard } from '../types';
 
 const API_KEY = process.env.API_KEY || '';
@@ -12,8 +12,22 @@ export const getAI = () => {
   return new GoogleGenAI({ apiKey: API_KEY });
 };
 
+// --- MEDIA PLAYER TOOL ---
+export const MEDIA_PLAYER_TOOL: FunctionDeclaration = {
+  name: 'play_media',
+  parameters: {
+    type: Type.OBJECT,
+    description: 'Play music or video on YouTube or Spotify.',
+    properties: {
+      query: { type: Type.STRING, description: 'Search query for the media' },
+      title: { type: Type.STRING, description: 'Title of the track/video' },
+      platform: { type: Type.STRING, enum: ['youtube', 'spotify'], description: 'Platform to use' }
+    },
+    required: ['query', 'title', 'platform']
+  }
+};
+
 // --- SYSTEM INSTRUCTION BUILDER ---
-// This is the core "Intelligence Design" where features are injected as behavioral rules.
 export const buildSystemInstruction = (
   personalization?: PersonalizationConfig,
   config?: ChatConfig,
@@ -21,90 +35,83 @@ export const buildSystemInstruction = (
 ): string => {
   let instruction = "";
 
-  // 1. BASE PERSONA LAYER
-  if (persona) {
-    instruction += `PERSONA: ${persona.systemPrompt}\n\n`;
-  } else {
-    instruction += `You are Zara AI, a highly advanced, multi-modal AI assistant. You are helpful, kind, and intelligent.
+  // 1. CORE IDENTITY & MULTILINGUAL PROTOCOL
+  instruction += `You are Zara AI, a professional, friendly, and human-like multi-modal assistant.
+  
+  CRITICAL INTERACTION RULES:
+  - LANGUAGE DETECTION: Detect the user's language immediately (English, Tamil, Tanglish, Hindi, etc.).
+  - LANGUAGE MIRRORING: ALWAYS respond in the EXACT same language or blend (e.g., Tanglish) used by the user. 
+  - CONCISE GREETINGS: For initial greetings, respond with a SINGLE-LINE, warm, conversational greeting.
+  - HUMAN-LIKE TONE: Avoid robotic scripts.
+  - EMOJI PROTOCOL: ALWAYS include at least one relevant and situation-appropriate emoji in EVERY response. Emojis should enhance the tone and context of the conversation.
+
+  IDENTITY & CREATOR FACTS (MULTILINGUAL ADAPTATION REQUIRED):
+  - FACT: You were created by Mohammed Majeed and trained on the Google Gemini model.
+  - RESPONSE RULE: When asked "who created/invented you", respond in the USER'S CURRENT LANGUAGE (e.g., in Tanglish: "Enna Mohammed Majeed thaan create pannaaru..."). NEVER force English for this fact if the user is using another language.
+  
+  DETAILED CREATOR INFO:
+  - TRIGGER: Only if the user specifically asks for "detailed info", "details about creator", "who is your inventor in detail", etc.
+  - CONTENT: "Mohammed Majeed is a passionate AI expert specializing in the development of intelligent systems and large language models (LLMs). He created me and trained me on the Google Gemini model. He possesses a strong background in AI, web, and graphic design, focusing on creating solutions that combine cutting-edge technology with user-centric designs. His work includes deploying complex AI-driven applications and building visually compelling websites."
+  - LANGUAGE: Adapt the above content to the user's language while keeping the technical essence.
+
+  MERMAID DIAGRAM RULES (STRICT COMPLIANCE REQUIRED):
+  - HEADER: Line 1 must be exactly 'flowchart TD' (or LR).
+  - MANDATORY NEWLINE: You MUST put a blank line after the flowchart declaration.
+  - NO WORD JOINING: NEVER output 'flowchartTDA'. Ensure a space and newline exist.
+  - NODE IDs: One-word alphanumeric only (e.g., StartNode, ProcA).
+  - LABELS: Must be double-quoted: ID["Label Text"].
+  - FORMAT:
+    flowchart TD
     
-    CORE IDENTITY & ORIGIN FACTS (Internal Knowledge):
-    - Creator Name: **Mohammed Majeed**
-    - Model Training: **Google Gemini**
-    - Creator Details: Mohammed Majeed is a passionate AI expert specializing in the development of intelligent systems and large language models (LLMs). He possesses a strong background in AI, web, and graphic design, focusing on creating solutions that combine cutting-edge technology with user-centric designs. His work includes deploying complex AI-driven applications and building visually compelling websites.
-
-    RESPONSE GUIDELINES FOR ORIGIN/CREATOR:
-    1. If asked "Who created you?", "Who made you?", or "Who is Mohammed Majeed?":
-       - Use the facts above to answer.
-       - **CRITICAL:** You MUST adapt the answer to the user's current language and dialect. 
-       - Do NOT use a static English response if the user is speaking Tamil, Tanglish, or any other language. 
-       - Example (Tanglish): "Enna create pannathu Mohammed Majeed. Avaru oru AI expert. Naan Google Gemini model-la train pannapattu irukken."
-       - Example (Tamil): "என்னை உருவாக்கியவர் முகமது மஜீத். அவர் ஒரு AI நிபுணர். நான் Google Gemini மாடலில் பயிற்சி அளிக்கப்பட்டுள்ளேன்."
-       - Example (English): "I was created by Mohammed Majeed and trained on the Google Gemini model."
-    \n`;
-  }
-
-  // CRITICAL: LANGUAGE ADAPTATION LAYER
-  instruction += `
-  CRITICAL LANGUAGE & DIALECT RULE:
-  - You MUST detect the language and dialect of the user's input automatically.
-  - If the user speaks in a regional language (e.g., Tamil, Hindi) or a code-mixed language (e.g., Tanglish - Tamil+English, Hinglish), YOU MUST REPLY IN THE EXACT SAME LANGUAGE/DIALECT.
-  - Example 1: User: "Hi nanba" -> Zara: "Hi nanba, eppadi irukka? Enna help venum?" (Tanglish)
-  - Example 2: User: "Vanakkam" -> Zara: "Vanakkam! Indha naal iniya naalaaga amaya vaazhthukkal." (Tamil)
-  - Example 3: User: "Kya haal hai" -> Zara: "Main badhiya hoon, aap batao kaise ho?" (Hinglish)
-  - DO NOT reply in standard English if the user uses a regional dialect unless explicitly asked to translate. Match their vibe, vocabulary, and transliteration style.
+    A["Start"] --> B["End"]
   \n`;
 
   // 2. USER CONTEXT & PERSONALIZATION LAYER
   if (personalization) {
-    instruction += `USER PROFILE:\n`;
-    if (personalization.nickname) instruction += `- Name: ${personalization.nickname} (Address user by this name occasionally)\n`;
-    if (personalization.occupation) instruction += `- Occupation: ${personalization.occupation}\n`;
-    if (personalization.aboutYou) instruction += `- Context: ${personalization.aboutYou}\n`;
-    if (personalization.customInstructions) instruction += `- Preferences: ${personalization.customInstructions}\n`;
+    const name = personalization.nickname || "User";
+    const occupation = personalization.occupation || "Explorer";
     
-    // Feature 3: Response Style Integration
-    if (personalization.responseStyle) {
-       instruction += `RESPONSE STYLE: ${personalization.responseStyle.toUpperCase()}\n`;
-       if (personalization.responseStyle === 'concise') {
-          instruction += `- Keep answers short, direct, and to the point. Avoid fluff.\n`;
-       } else if (personalization.responseStyle === 'detailed') {
-          instruction += `- Provide comprehensive explanations, examples, and deep context.\n`;
-       } else {
-          instruction += `- Maintain a balanced length. Clear but not overly verbose.\n`;
-       }
-    }
-    instruction += `\n`;
+    instruction += `USER PROFILE:
+    - Name: ${name}
+    - Role: ${occupation}
+    - About User: ${personalization.aboutYou || "No details provided."}
+    - Style: ${personalization.responseStyle.toUpperCase()}
+    ${personalization.responseStyle === 'concise' ? '- Rule: Stay extremely brief, use bullet points, avoid fluff. Prioritize speed and directness.' : ''}
+    ${personalization.responseStyle === 'detailed' ? '- Rule: Be comprehensive and explanatory.' : ''}
+    \n`;
   }
 
-  // 3. INTERACTION MODE LAYER (Tone & Style)
+  // 3. INTERACTION MODE LAYER
   if (config) {
     instruction += `INTERACTION PROTOCOL: ${config.interactionMode.toUpperCase()}\n`;
     switch (config.interactionMode) {
-      case 'teacher':
-        instruction += `Role: Academic Tutor. Use clear examples, structured explanations, and verify understanding.\n`;
-        break;
-      case 'developer':
-        instruction += `Role: Senior Engineer. Be concise, technical, code-first. Avoid fluff.\n`;
-        break;
-      case 'friend':
-        instruction += `Role: Supportive Companion. Use casual tone, emojis, and empathetic language.\n`;
-        break;
-      case 'examiner':
-        instruction += `Role: Strict Examiner. Direct answers, syllabus-focused, no hints, strict grading tone.\n`;
-        break;
-      default:
-        instruction += `Role: Standard Assistant. Balanced and helpful.\n`;
+      case 'teacher': instruction += `Role: Academic Tutor.\n`; break;
+      case 'developer': instruction += `Role: Senior Architect.\n`; break;
+      case 'friend': instruction += `Role: Empathetic Companion.\n`; break;
+      case 'examiner': instruction += `Role: Objective Evaluator.\n`; break;
     }
-    instruction += `\n`;
+  }
 
-    // 4. COGNITIVE FEATURE INJECTION LAYER
-    if (config.useThinking) instruction += `THINKING MODE: ON. Deconstruct complex problems step-by-step before answering.\n`;
-    if (config.eli5) instruction += `EXPLAIN LIKE I'M 5: Use simple analogies and basic vocabulary.\n`;
-    if (config.socraticMode) instruction += `SOCRATIC METHOD: Answer with guiding questions to help the user derive the answer.\n`;
-    if (config.debateMode) instruction += `DEBATE MODE: Play devil's advocate. Challenge the user's premises constructively.\n`;
-    if (config.errorExplanation) instruction += `ERROR ANALYSIS: If the user provides code/math, explicitly detail WHY it is wrong before correcting.\n`;
-    if (config.notesMode) instruction += `OUTPUT FORMAT: Generate output as structured study notes (Bullet points, Headings, Key Terms).\n`;
-    if (config.confidenceIndicator) instruction += `META-DATA: Start response with [Confidence: Low/Med/High].\n`;
+  if (persona) {
+    instruction += `ACTIVE PERSONA: ${persona.systemPrompt}\n\n`;
+  }
+
+  return instruction;
+};
+
+// --- LIVE SYSTEM INSTRUCTION (Voice Optimized) ---
+export const buildLiveSystemInstruction = (personalization?: PersonalizationConfig): string => {
+  let instruction = `You are Zara AI, a friendly real-time voice assistant.
+
+CORE RULES:
+- Keep spoken responses short, natural, and conversational.
+- No markdown, bolding, or lists in speech.
+- Mirror the user's language (English, Tamil, Tanglish, etc.).
+- You were created by Mohammed Majeed.
+`;
+
+  if (personalization?.nickname) {
+    instruction += `- Address the user as ${personalization.nickname}.`;
   }
 
   return instruction;
@@ -114,7 +121,7 @@ export const buildSystemInstruction = (
 export const sendMessageToGeminiStream = async (
   history: Message[],
   prompt: string,
-  attachments: any[], // Simplified type for brevity
+  attachments: any[],
   config: ChatConfig,
   personalization: PersonalizationConfig,
   onToken: (text: string) => void,
@@ -125,36 +132,24 @@ export const sendMessageToGeminiStream = async (
 
   const geminiModel = config.model;
 
-  // Transform History
   const historyParts = history
-    .filter(m => !m.isError && !m.isOffline) // Skip failed/offline msgs
+    .filter(m => !m.isError && !m.isOffline)
     .map(msg => {
       const parts: any[] = [{ text: msg.text }];
       if (msg.attachments) {
         msg.attachments.forEach(att => {
-           // Only send images to vision models
-           if (att.mimeType.startsWith('image/')) {
-              parts.push({ inlineData: { mimeType: att.mimeType, data: att.base64 } });
-           } else if (att.mimeType === 'application/pdf') {
+           if (att.mimeType.startsWith('image/') || att.mimeType === 'application/pdf') {
               parts.push({ inlineData: { mimeType: att.mimeType, data: att.base64 } });
            }
         });
       }
-      return {
-        role: msg.role === Role.USER ? 'user' : 'model',
-        parts
-      };
+      return { role: msg.role === Role.USER ? 'user' : 'model', parts };
     });
 
-  // Current Prompt Parts
   const currentParts: any[] = [{ text: prompt }];
   attachments.forEach(att => {
       if (att.mimeType.startsWith('image/') || att.mimeType === 'application/pdf') {
          currentParts.push({ inlineData: { mimeType: att.mimeType, data: att.base64 } });
-      } else {
-         // Text files
-         // We can append text content to the prompt if it's a text file
-         // But for now, we assume fileToBase64 handled it or we just ignore non-vision files in this specific call
       }
   });
 
@@ -168,7 +163,6 @@ export const sendMessageToGeminiStream = async (
     history: historyParts
   });
 
-  // Corrected: Pass as named parameter object
   const result = await chat.sendMessageStream({ message: currentParts });
   
   let fullText = "";
@@ -181,7 +175,6 @@ export const sendMessageToGeminiStream = async (
       onToken(fullText);
     }
     
-    // Capture grounding metadata if available
     const groundingChunks = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks;
     if (groundingChunks) {
         groundingChunks.forEach((c: any) => {
@@ -193,397 +186,279 @@ export const sendMessageToGeminiStream = async (
   return { text: fullText, sources };
 };
 
-// --- STUDENT MODE: CONTENT GENERATOR ---
-export const generateStudentContent = async (config: {
-  topic: string; 
-  mode: 'summary' | 'mcq' | '5mark' | '20mark' | 'simple';
-  mcqConfig?: { count: number, difficulty: string };
-  studyMaterial?: string;
-  attachment?: { mimeType: string, base64: string };
-}) => {
+export const generateStudentContent = async (config: any) => {
   const ai = getAI();
-  const model = "gemini-2.5-flash"; 
-
-  let prompt = "";
-  
-  if (config.studyMaterial) {
-      prompt += `SOURCE MATERIAL:\n${config.studyMaterial}\n\n`;
-  }
-  
-  prompt += `TOPIC: ${config.topic}\n`;
-  prompt += `TASK: `;
-
-  switch (config.mode) {
-    case 'summary': prompt += "Create a comprehensive summary with key points, formulas, and definitions."; break;
-    case 'simple': prompt += "Explain this topic like I am 5 years old. Use analogies."; break;
-    case 'mcq': prompt += `Generate ${config.mcqConfig?.count || 5} Multiple Choice Questions (${config.mcqConfig?.difficulty || 'Medium'} level) with answers and explanations.`; break;
-    case '5mark': prompt += "Generate 5 important short-answer questions (5 marks equivalent) and model answers."; break;
-    case '20mark': prompt += "Generate a detailed essay-type question (20 marks) and a structured answer with headings."; break;
-  }
-
-  const parts: any[] = [{ text: prompt }];
-  if (config.attachment) {
-      parts.push({ inlineData: { mimeType: config.attachment.mimeType, data: config.attachment.base64 } });
-  }
-
   const response = await ai.models.generateContent({
-    model,
-    contents: { role: 'user', parts },
-    config: {
-        systemInstruction: "You are an expert academic tutor. Output in clean Markdown."
-    }
+    model: 'gemini-3-flash-preview',
+    contents: `Task: ${config.mode} for topic: ${config.topic}.`,
+    config: { systemInstruction: "You are an academic tutor. Use emojis." }
   });
-
-  return response.text || "Failed to generate content.";
+  return response.text || "No content generated.";
 };
 
-// --- CODE MODE: ASSISTANT ---
-export const generateCodeAssist = async (code: string, task: 'debug' | 'explain' | 'optimize' | 'generate') => {
+export const generateCodeAssist = async (code: string, task: string) => {
   const ai = getAI();
-  
-  let prompt = `CONTEXT: You are an expert Polyglot Software Architect. You support ALL programming languages (Frontend, Backend, Database, Systems, Esoteric, etc.).\n\nINPUT:\n${code}\n\n`;
-  
-  prompt += `INSTRUCTION: Automatically detect the language/framework. `;
-  
-  switch (task) {
-    case 'debug': prompt += "Identify bugs, security vulnerabilities, and logical errors. Provide corrected code and explain the fixes."; break;
-    case 'explain': prompt += "Explain the code logic, flow, and concepts step-by-step."; break;
-    case 'optimize': prompt += "Refactor for performance, readability, and best practices. Provide the optimized code."; break;
-    case 'generate': prompt += "Generate code based on this description. If no language is specified, infer the best choice."; break;
-  }
-
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash', // Good for code
-    contents: prompt,
-    config: {
-        systemInstruction: "You are a senior software engineer. Auto-detect languages. Provide clean, efficient code and concise explanations."
-    }
+    model: 'gemini-3-pro-preview',
+    contents: `Task: ${task}\n\nCode:\n${code}`,
+    config: { systemInstruction: "You are a senior software architect. Use emojis." }
   });
-
-  return response.text || "Error processing code.";
+  return response.text || "No code assistance generated.";
 };
 
-// --- IMAGE GENERATION (Nano Banana) ---
-export const generateImageContent = async (prompt: string, config: { model: 'flash' | 'pro', aspectRatio: string, imageSize?: string, referenceImage?: { base64: string, mimeType: string } }) => {
+export const generateImageContent = async (prompt: string, config: any) => {
   const ai = getAI();
-  const modelName = config.model === 'pro' ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
+  const isPro = config.model === 'pro';
+  const model = isPro ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
   
-  const contentsPayload: any = {
-      parts: [{ text: prompt }]
+  const imageConfig: any = {
+    aspectRatio: config.aspectRatio || "1:1",
   };
 
-  // If editing/reference image provided
-  if (config.referenceImage) {
-      contentsPayload.parts.unshift({
-          inlineData: {
-              mimeType: config.referenceImage.mimeType,
-              data: config.referenceImage.base64
-          }
-      });
+  // imageSize is only supported for gemini-3-pro-image-preview
+  if (isPro && config.imageSize) {
+    imageConfig.imageSize = config.imageSize;
   }
 
   const response = await ai.models.generateContent({
-    model: modelName,
-    contents: contentsPayload,
+    model: model,
+    contents: {
+      parts: [
+        ...(config.referenceImage ? [{ inlineData: { data: config.referenceImage.base64, mimeType: config.referenceImage.mimeType } }] : []),
+        { text: prompt },
+      ],
+    },
     config: {
-       imageConfig: {
-           aspectRatio: config.aspectRatio,
-           imageSize: config.imageSize || '1K'
-       }
-    }
+      imageConfig: imageConfig
+    },
   });
-
-  let imageUrl = null;
-  let text = null;
-
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-          imageUrl = `data:image/png;base64,${part.inlineData.data}`;
-      } else if (part.text) {
-          text = part.text;
-      }
-  }
-
-  if (!imageUrl && !text) throw new Error("No image generated.");
   
+  let imageUrl: string | null = null;
+  let text: string | null = null;
+  
+  if (response.candidates && response.candidates[0].content.parts) {
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        imageUrl = `data:image/png;base64,${part.inlineData.data}`;
+      } else if (part.text) {
+        text = part.text;
+      }
+    }
+  }
   return { imageUrl, text };
 };
 
-// --- VIDEO GENERATION (Veo) ---
-export const generateVideo = async (prompt: string, aspectRatio: '16:9' | '9:16', image?: { base64: string, mimeType: string }[]) => {
-    const ai = getAI();
-    
-    let operation;
-    
-    // Construct request
-    if (image && image.length > 0) {
-        // Image-to-Video
-        // If multiple images (slideshow), Veo logic differs or might not support array yet.
-        // We use the first image for simple image-to-video for now.
-        operation = await ai.models.generateVideos({
-            model: 'veo-3.1-fast-generate-preview', // Or 'veo-3.1-generate-preview' for higher quality
-            prompt: prompt,
-            image: {
-                imageBytes: image[0].base64,
-                mimeType: image[0].mimeType
-            },
-            config: {
-                numberOfVideos: 1,
-                aspectRatio: aspectRatio,
-                resolution: '720p'
-            }
-        });
+export const generateVideo = async (prompt: string, aspectRatio: string = '16:9', images?: { base64: string, mimeType: string }[]) => {
+  const ai = getAI();
+  
+  const payload: any = {
+    model: 'veo-3.1-fast-generate-preview',
+    prompt: prompt,
+    config: {
+      numberOfVideos: 1,
+      resolution: '720p',
+      aspectRatio: aspectRatio
+    }
+  };
+
+  if (images && images.length > 0) {
+    if (images.length > 1) {
+      payload.model = 'veo-3.1-generate-preview';
+      payload.config.referenceImages = images.map(img => ({
+        image: { imageBytes: img.base64, mimeType: img.mimeType },
+        referenceType: 'ASSET'
+      }));
     } else {
-        // Text-to-Video
-        operation = await ai.models.generateVideos({
-            model: 'veo-3.1-fast-generate-preview',
-            prompt: prompt,
-            config: {
-                numberOfVideos: 1,
-                aspectRatio: aspectRatio,
-                resolution: '720p'
-            }
-        });
+      payload.image = {
+        imageBytes: images[0].base64,
+        mimeType: images[0].mimeType
+      };
     }
+  }
 
-    // Wait for completion
-    // The SDK returns an Operation immediately. We must poll.
-    let opResult = operation;
-    while (!opResult.done) {
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        // Fix: Pass operation object, not string name
-        opResult = await ai.operations.getVideosOperation({ operation: opResult });
+  let operation = await ai.models.generateVideos(payload);
+  while (!operation.done) {
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    operation = await ai.operations.getVideosOperation({ operation: operation });
+  }
+
+  const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+  return `${downloadLink}&key=${process.env.API_KEY}`;
+};
+
+export const analyzeVideo = async (base64: string, mimeType: string, prompt: string) => {
+  const ai = getAI();
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: [{ parts: [{ inlineData: { data: base64, mimeType } }, { text: prompt }] }]
+  });
+  return response.text || "No analysis available.";
+};
+
+export const generateSpeech = async (text: string, voice: string) => {
+  const ai = getAI();
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash-preview-tts",
+    contents: [{ parts: [{ text: text }] }],
+    config: {
+      responseModalities: [Modality.AUDIO],
+      speechConfig: {
+        voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } },
+      },
+    },
+  });
+  return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || "";
+};
+
+export const generateExamQuestions = async (config: ExamConfig): Promise<ExamQuestion[]> => {
+  const ai = getAI();
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `Generate ${config.questionCount} questions for ${config.subject}.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.INTEGER },
+            text: { type: Type.STRING },
+            type: { type: Type.STRING, enum: ['MCQ', 'Theory'] },
+            options: { type: Type.ARRAY, items: { type: Type.STRING } },
+            correctAnswer: { type: Type.STRING },
+            marks: { type: Type.INTEGER }
+          },
+          required: ['id', 'text', 'type', 'correctAnswer', 'marks']
+        }
+      }
     }
-
-    const videoUri = opResult.response?.generatedVideos?.[0]?.video?.uri;
-    if (!videoUri) throw new Error("Video generation failed.");
-
-    // Fetch the actual bytes using API Key
-    const res = await fetch(`${videoUri}&key=${API_KEY}`);
-    const blob = await res.blob();
-    return URL.createObjectURL(blob);
+  });
+  return JSON.parse(response.text || '[]');
 };
 
-export const analyzeVideo = async (base64Video: string, mimeType: string, prompt: string) => {
-    const ai = getAI();
-    // Video analysis uses Gemini 2.5 Flash/Pro
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: {
-            parts: [
-                { inlineData: { mimeType: mimeType, data: base64Video } },
-                { text: prompt }
-            ]
-        }
-    });
-    return response.text || "Analysis failed.";
-};
-
-// --- TTS ---
-export const generateSpeech = async (text: string, voiceName: string = 'Kore') => {
-    const ai = getAI();
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-tts',
-        contents: { parts: [{ text }] },
-        config: {
-            responseModalities: [Modality.AUDIO],
-            speechConfig: {
-                voiceConfig: { prebuiltVoiceConfig: { voiceName } }
-            }
-        }
-    });
-    
-    const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!audioData) throw new Error("TTS generation failed.");
-    return audioData;
-};
-
-// --- TOOLS DEFINITION ---
-export const MEDIA_PLAYER_TOOL: FunctionDeclaration = {
-    name: 'play_media',
-    description: 'Play music or video from YouTube or Spotify based on user request.',
-    parameters: {
+export const evaluateTheoryAnswers = async (subject: string, question: any, answer: string) => {
+  const ai = getAI();
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `Evaluate.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
         type: Type.OBJECT,
         properties: {
-            query: { type: Type.STRING, description: 'Search query for the media (song name, video title)' },
-            platform: { type: Type.STRING, description: 'Platform to search: "youtube" or "spotify"', enum: ['youtube', 'spotify'] },
-            title: { type: Type.STRING, description: 'Display title for the media card' }
+          score: { type: Type.NUMBER },
+          feedback: { type: Type.STRING }
         },
-        required: ['query', 'platform', 'title']
-    }
-};
-
-// --- EXAM GENERATION ---
-export const generateExamQuestions = async (config: ExamConfig): Promise<ExamQuestion[]> => {
-    const ai = getAI();
-    
-    const prompt = `
-    Generate a JSON array of ${config.questionCount} exam questions for the subject "${config.subject}".
-    Difficulty: ${config.difficulty}.
-    Language: ${config.language}.
-    Types: ${config.includeTheory ? 'MCQ and Theory mixed' : 'MCQ only'}.
-    
-    JSON Schema:
-    [
-      {
-        "id": number,
-        "text": string,
-        "type": "MCQ" | "Theory",
-        "options": string[] (only for MCQ),
-        "correctAnswer": string (answer key or model answer),
-        "marks": number
+        required: ['score', 'feedback']
       }
-    ]
-    Do not output markdown code blocks, just raw JSON.
-    `;
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: { responseMimeType: 'application/json' }
-    });
-
-    try {
-        return JSON.parse(response.text || '[]');
-    } catch (e) {
-        throw new Error("Failed to parse exam questions.");
     }
+  });
+  return JSON.parse(response.text || '{"score": 0, "feedback": "Evaluation failed."}');
 };
 
-export const evaluateTheoryAnswers = async (subject: string, question: ExamQuestion, userAnswer: string): Promise<{score: number, feedback: string}> => {
-    const ai = getAI();
-    const prompt = `
-    Subject: ${subject}
-    Question: ${question.text}
-    Marks: ${question.marks}
-    Correct Answer/Key: ${question.correctAnswer}
-    
-    Student Answer: ${userAnswer}
-    
-    Evaluate the student answer. 
-    Return JSON: { "score": number, "feedback": string }
-    Score should be between 0 and ${question.marks}.
-    `;
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: { responseMimeType: 'application/json' }
-    });
-
-    return JSON.parse(response.text || '{ "score": 0, "feedback": "Error" }');
-};
-
-// --- FLASHCARD GENERATION ---
-export const generateFlashcards = async (topic: string, context?: string): Promise<Flashcard[]> => {
-    const ai = getAI();
-    const prompt = `
-    Create 10 flashcards for "${topic}".
-    Context: ${context || 'None'}.
-    
-    Return JSON array: [{ "front": string, "back": string, "mastered": false }]
-    `;
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: { responseMimeType: 'application/json' }
-    });
-
-    return JSON.parse(response.text || '[]');
-};
-
-// --- STUDY PLANNER ---
-export const generateStudyPlan = async (topic: string, hoursPerDay: number): Promise<StudyPlan> => {
-    const ai = getAI();
-    const prompt = `
-    Create a 7-day study plan for "${topic}" assuming ${hoursPerDay} hours/day.
-    
-    Return JSON:
-    {
-      "id": "generated-id",
-      "topic": "${topic}",
-      "startDate": ${Date.now()},
-      "weeklySchedule": [
-         { 
-           "day": "Monday", 
-           "tasks": [ { "description": string, "durationMinutes": number, "completed": false } ] 
-         }
-         ... (for 7 days)
-      ]
-    }
-    `;
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: { responseMimeType: 'application/json' }
-    });
-
-    return JSON.parse(response.text || '{}');
-};
-
-// --- APP BUILDER ---
-export const sendAppBuilderStream = async (
-    history: Message[],
-    prompt: string,
-    attachments: any[],
-    onToken: (text: string) => void
-  ) => {
-    // Specialized config for coding
-    const config: ChatConfig = {
-        model: 'gemini-3-pro-preview', // Strongest model for coding
-        useThinking: true, // Enable reasoning for architecture
-        useGrounding: false,
-        interactionMode: 'developer'
-    };
-    
-    const persona: Persona = {
-        id: 'architect',
-        name: 'App Architect',
-        description: 'Full Stack Generator',
-        systemPrompt: `You are an expert Full Stack Web Developer.
-        Your goal is to generate complete, runnable web applications based on user prompts.
-        
-        OUTPUT FORMAT:
-        You must output multiple files. Wrap each file in a special XML-like tag:
-        <file path="filename.ext">
-        ... content ...
-        </file>
-        
-        REQUIRED FILES:
-        1. index.html (Main entry, must include Tailwind CDN, React UMD, Lucide CDN script tags)
-        2. styles.css (Optional custom styles)
-        3. script.js (React components and logic. Use 'window.React', 'window.ReactDOM', 'window.lucide')
-        
-        RULES:
-        - The app should be contained in these files.
-        - Use Tailwind CSS for styling.
-        - Use React (Functional Components, Hooks).
-        - Ensure the UI is modern, dark-themed by default (bg-gray-900), and responsive.
-        - Do not use 'import' statements in script.js (since it runs in browser directly via Babel/UMD). Use 'const { useState } = React;'.
-        `
-    };
-
-    return sendMessageToGeminiStream(history, prompt, attachments, config, {} as any, onToken, persona);
-};
-
-// --- NEWS ---
-export const getBreakingNews = async () => {
-    const ai = getAI();
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: "What are the top 5 breaking news headlines right now? Provide a short summary for each. Separate each news item with '---'.",
-        config: {
-            tools: [{ googleSearch: {} }]
+export const generateFlashcards = async (topic: string, notes: string): Promise<Flashcard[]> => {
+  const ai = getAI();
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `Generate flashcards for ${topic}.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            front: { type: Type.STRING },
+            back: { type: Type.STRING },
+            mastered: { type: Type.BOOLEAN }
+          },
+          required: ['front', 'back', 'mastered']
         }
-    });
-    
-    // Extract sources
-    const sources: any[] = [];
-    response.candidates?.[0]?.groundingMetadata?.groundingChunks?.forEach((c: any) => {
-        if (c.web) sources.push(c.web);
-    });
+      }
+    }
+  });
+  return JSON.parse(response.text || '[]');
+};
 
-    return { text: response.text || "No news found.", sources };
+export const generateStudyPlan = async (topic: string, hours: number): Promise<any> => {
+  const ai = getAI();
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `Plan.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          id: { type: Type.STRING },
+          topic: { type: Type.STRING },
+          startDate: { type: Type.NUMBER },
+          weeklySchedule: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                day: { type: Type.STRING },
+                tasks: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      description: { type: Type.STRING },
+                      durationMinutes: { type: Type.INTEGER },
+                      completed: { type: Type.BOOLEAN }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+  const plan = JSON.parse(response.text || '{}');
+  return { ...plan, id: crypto.randomUUID(), startDate: Date.now() };
+};
+
+export const sendAppBuilderStream = async (history: any, prompt: string, atts: any, onToken: any) => {
+  const ai = getAI();
+  const response = await ai.models.generateContentStream({
+    model: 'gemini-3-pro-preview',
+    contents: [
+      ...history.map((m: any) => ({ role: m.role === Role.USER ? 'user' : 'model', parts: [{ text: m.text }] })),
+      { parts: [{ text: prompt }, ...atts.map((a: any) => ({ inlineData: { data: a.base64, mimeType: a.mimeType } }))] }
+    ],
+    config: { systemInstruction: "You are an expert full-stack web developer. Use emojis." }
+  });
+  
+  let fullText = "";
+  for await (const chunk of response) {
+    if (chunk.text) {
+      fullText += chunk.text;
+      onToken(fullText);
+    }
+  }
+  return { text: fullText, sources: [] };
+};
+
+export const getBreakingNews = async () => {
+  const ai = getAI();
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: "News.",
+    config: { tools: [{ googleSearch: {} }] }
+  });
+  
+  const sources: any[] = [];
+  if (response.candidates && response.candidates[0].groundingMetadata) {
+    const groundingChunks = response.candidates[0].groundingMetadata.groundingChunks;
+    if (groundingChunks) {
+      groundingChunks.forEach((c: any) => {
+        if (c.web) sources.push(c.web);
+      });
+    }
+  }
+  return { text: response.text || "No news.", sources };
 };

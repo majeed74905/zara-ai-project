@@ -28,7 +28,7 @@ export const CodeMode: React.FC = () => {
     id: 'github-analyst',
     name: 'GitHub Analyst',
     description: 'Expert Code Reviewer',
-    systemPrompt: 'You are an expert software architect and code analyst. Your goal is to analyze repositories and provide structured, insightful summaries.'
+    systemPrompt: 'You are an expert software architect and code analyst. Your goal is to analyze repositories and provide structured, insightful summaries. Use Mermaid diagrams ONLY if you can follow the strict formatting rules provided.'
   };
 
   // --- Snippet Logic ---
@@ -135,7 +135,15 @@ export const CodeMode: React.FC = () => {
       const initialPrompt = `
       ${context}
       
-      TASK: Analyze this GitHub repository and provide a structured summary based on the metadata and file list provided above.
+      TASK: Analyze this GitHub repository and provide a structured summary.
+      
+      SPECIFIC REQUIREMENTS:
+      1. Analyze the purpose, tech stack, and architecture.
+      2. IDENTIFY and LIST the top 3-5 most critical or frequently used functions/methods based on the codebase structure and naming conventions (e.g., look for entry points, core handlers, main logic loops, or initialization routines).
+      3. Use a Mermaid diagram to visualize the high-level execution flow or architecture. 
+         - CRITICAL: Mermaid IDs must be alphanumeric ONLY. 
+         - Labels must be quoted: A["Label Text"]. 
+         - Prohibit symbols like > < - ! ( ) in labels.
       
       CRITICAL INSTRUCTION: You MUST use the following layout EXACTLY. Do not deviate. Use appropriate emojis.
       
@@ -153,15 +161,26 @@ export const CodeMode: React.FC = () => {
       📝 **Description**: ${meta ? meta.description : '[Find via Search]'}
 
       📂 **What's Inside**
-      [One sentence summary of contents]. Some of the files include:
-      * **[File/Folder Name]**: [Brief explanation of its purpose based on standard conventions]
+      [One sentence summary of contents]. Some of the key files/folders include:
       * **[File/Folder Name]**: [Brief explanation of its purpose]
-      ... (List 4-5 key files from the FILE LIST provided above. Do NOT say "I cannot browse".)
+      ...
 
-      📝 **Notes**
-      * [Key Observation 1 - e.g. Code quality, maturity, or specific framework used]
-      * [Key Observation 2 - e.g. Usage use case or target audience]
-      * [Key Observation 3 - e.g. Missing documentation or specific dependencies]
+      🛠 **Core Logic & Key Functions**
+      [Brief analysis of the main execution flow]. Based on standard conventions and file structure, here are the most critical functions/methods:
+      * **[Function/Method Name]**: [Description of its role, where it likely resides, and why it is critical to the app]
+      * **[Function/Method Name]**: [Description]
+      ... (List 3-5)
+
+      📊 **Flow Visualization**
+      \`\`\`mermaid
+      flowchart TD
+      [YOUR STRICT MERMAID CODE HERE]
+      \`\`\`
+
+      📝 **Architectural Notes**
+      * [Key Observation 1 - e.g. Tech stack maturity or design patterns]
+      * [Key Observation 2 - e.g. Scaling or security considerations]
+      * [Key Observation 3 - e.g. Recommendations for improvement]
 
       If you cannot find specific stats like Stars/Forks in the provided metadata, make a reasonable estimate using Google Search or state "N/A".
       `;
@@ -361,7 +380,7 @@ export const CodeMode: React.FC = () => {
                   </div>
                   <h3 className="text-xl font-bold mb-2 text-text">Analyze Repository</h3>
                   <p className="text-text-sub mb-6 text-center max-w-md">
-                     Paste a GitHub URL to analyze tech stack, architecture, and code quality.
+                     Paste a GitHub URL to analyze tech stack, architecture, and core logic.
                   </p>
                   
                   <div className="w-full max-w-xl relative">
