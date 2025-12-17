@@ -1,8 +1,7 @@
-
 import React, { useState, useRef } from 'react';
 import { Github, Search, Loader2, ArrowRight, Book, GitBranch, AlertCircle, FileText, Code } from 'lucide-react';
 import { sendMessageToGeminiStream } from '../services/gemini';
-import { Message, Role, Persona } from '../types';
+import { Message, Role, Persona, ChatConfig } from '../types';
 import { MessageItem } from './MessageItem';
 import { InputArea } from './InputArea';
 
@@ -100,11 +99,56 @@ export const RepoMode: React.FC = () => {
       };
       setMessages(prev => [...prev, botMsg]);
 
+      const config: ChatConfig = {
+        model: 'gemini-2.5-flash',
+        useThinking: true,
+        useGrounding: true,
+        interactionMode: 'developer',
+        examMode: false,
+        integrityMode: false,
+        notesFormat: false,
+        reverseMode: false,
+        explainErrors: false,
+        multiPerspective: false,
+        moodDetection: false,
+        showConfidence: false,
+        eli5: false,
+        adaptiveLeveling: false,
+        conceptMapping: false,
+        selfVerification: false,
+        mistakeAnalyzer: false,
+        thoughtPath: false,
+        goalDriven: false,
+        cognitiveLoad: false,
+        learningCompass: false,
+        gamification: false,
+        contextGuard: false,
+        questionScorer: false,
+        hypotheticals: false,
+        knowledgeBoundaries: false,
+        // Next-Gen Cognitive
+        learningGap: false,
+        aiDebate: false,
+        conceptCompression: false,
+        tutorMemory: false,
+        explainMistakes: false,
+        confusionQuestions: false,
+        confidenceCorrectness: false,
+        knowledgeTimeline: false,
+        mentorEvolution: false,
+        socraticMethod: false,
+        assumptionExposure: false,
+        reverseLearning: false,
+        failureCases: false,
+        styleDetection: false,
+        selfLimit: false
+      };
+
       await sendMessageToGeminiStream(
         [], // Empty history for fresh context
         initialPrompt, 
         [], 
-        { model: 'gemini-2.5-flash', useThinking: true, useGrounding: true }, // Enable grounding to crawl if needed
+        config, // Enable grounding to crawl if needed
         { nickname: 'Developer', occupation: 'Engineer', aboutYou: '', customInstructions: '', fontSize: 'medium' },
         (text) => {
            setMessages(prev => prev.map(m => m.id === botMsgId ? { ...m, text } : m));
@@ -135,12 +179,57 @@ export const RepoMode: React.FC = () => {
     const botMsgId = crypto.randomUUID();
     setMessages(prev => [...prev, { id: botMsgId, role: Role.MODEL, text: '', timestamp: Date.now(), isStreaming: true }]);
 
+    const config: ChatConfig = {
+      model: 'gemini-2.5-flash',
+      useThinking: false,
+      useGrounding: true,
+      interactionMode: 'developer',
+      examMode: false,
+      integrityMode: false,
+      notesFormat: false,
+      reverseMode: false,
+      explainErrors: false,
+      multiPerspective: false,
+      moodDetection: false,
+      showConfidence: false,
+      eli5: false,
+      adaptiveLeveling: false,
+      conceptMapping: false,
+      selfVerification: false,
+      mistakeAnalyzer: false,
+      thoughtPath: false,
+      goalDriven: false,
+      cognitiveLoad: false,
+      learningCompass: false,
+      gamification: false,
+      contextGuard: false,
+      questionScorer: false,
+      hypotheticals: false,
+      knowledgeBoundaries: false,
+      // Next-Gen Cognitive
+      learningGap: false,
+      aiDebate: false,
+      conceptCompression: false,
+      tutorMemory: false,
+      explainMistakes: false,
+      confusionQuestions: false,
+      confidenceCorrectness: false,
+      knowledgeTimeline: false,
+      mentorEvolution: false,
+      socraticMethod: false,
+      assumptionExposure: false,
+      reverseLearning: false,
+      failureCases: false,
+      styleDetection: false,
+      selfLimit: false
+    };
+
     try {
       await sendMessageToGeminiStream(
         messages, 
         text, 
         [], 
-        { model: 'gemini-2.5-flash', useThinking: false, useGrounding: true }, 
+        config, 
         { nickname: 'Developer', occupation: 'Engineer', aboutYou: '', customInstructions: '', fontSize: 'medium' },
         (streamText) => {
            setMessages(prev => prev.map(m => m.id === botMsgId ? { ...m, text: streamText } : m));

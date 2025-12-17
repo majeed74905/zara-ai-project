@@ -25,7 +25,8 @@ export type ViewMode =
   | 'memory'
   | 'creative'
   | 'pricing'
-  | 'video';
+  | 'video'
+  | 'repo';
 
 export interface Attachment {
   id: string;
@@ -96,6 +97,7 @@ export interface CodeConfig {
 
 export type GeminiModel = 'gemini-2.5-flash' | 'gemini-3-pro-preview' | 'gemini-flash-lite-latest';
 export type AppLanguage = 'English' | 'Tamil' | 'Tanglish';
+export type InteractionMode = 'default' | 'teacher' | 'developer' | 'friend' | 'examiner';
 
 export interface Persona {
   id: string;
@@ -110,6 +112,54 @@ export interface ChatConfig {
   useThinking: boolean;
   useGrounding: boolean;
   activePersonaId?: string;
+  
+  // --- CORE FEATURES ---
+  interactionMode: InteractionMode;
+  
+  // --- STUDENT TOOLS ---
+  examMode: boolean;           // 8. Exam Mode
+  integrityMode: boolean;      // 9. Assignment Integrity
+  notesFormat: boolean;        // 10. Notes Generator
+  reverseMode: boolean;        // 11. Reverse Question Mode
+  
+  // --- AI ENHANCEMENTS ---
+  explainErrors: boolean;      // 12. Error Explanation
+  multiPerspective: boolean;   // 13. Multi-Answer
+  moodDetection: boolean;      // 15. Mood Detection
+  showConfidence: boolean;     // 12. Confidence Indicator (Trust-Weighted)
+  eli5: boolean;               // 13. ELI5
+  
+  // --- ADVANCED EDUCATIONAL FEATURES (PREVIOUS) ---
+  adaptiveLeveling: boolean;   // 1. Adaptive Intelligence Leveling
+  conceptMapping: boolean;     // 2. Concept Dependency Mapping
+  selfVerification: boolean;   // 3. Self-Verification Mode
+  mistakeAnalyzer: boolean;    // 4. Mistake Pattern Analyzer
+  thoughtPath: boolean;        // 6. Thought-Path Visualization
+  goalDriven: boolean;         // 7. Goal-Driven Sessions
+  cognitiveLoad: boolean;      // 8. Cognitive Load Control
+  learningCompass: boolean;    // 10. AI Learning Compass
+  gamification: boolean;       // 11. Gamified Mastery Levels
+  contextGuard: boolean;       // 12. Context Switching Guard
+  questionScorer: boolean;     // 13. Question Quality Scorer
+  hypotheticals: boolean;      // 14. Hypothetical Scenario Generator
+  knowledgeBoundaries: boolean;// 15. Knowledge Boundary Detector
+
+  // --- NEXT-GEN COGNITIVE FEATURES (NEW) ---
+  learningGap: boolean;        // 1. Learning Gap Discovery
+  aiDebate: boolean;           // 2. AI Debate
+  conceptCompression: boolean; // 3. Concept Compression/Expansion
+  tutorMemory: boolean;        // 4. Long-Term Tutor Memory
+  explainMistakes: boolean;    // 5. Explain-My-Mistake
+  confusionQuestions: boolean; // 6. Question-Generation-From-Confusion
+  confidenceCorrectness: boolean; // 7. Confidence vs Correctness
+  knowledgeTimeline: boolean;  // 8. Knowledge Timeline Builder
+  mentorEvolution: boolean;    // 9. Mentor Personality Evolution
+  socraticMethod: boolean;     // 10. Socratic Teaching
+  assumptionExposure: boolean; // 11. Assumption Exposure
+  reverseLearning: boolean;    // 12. Reverse Learning (Explain It Wrong)
+  failureCases: boolean;       // 13. Real-World Failure Case
+  styleDetection: boolean;     // 14. Learning Style Detection
+  selfLimit: boolean;          // 15. AI Self-Limit Declaration
 }
 
 export interface PersonalizationConfig {

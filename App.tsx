@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Menu, Sparkles, Hammer, Heart, WifiOff, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
 import { Message, Role, Attachment, ViewMode, ChatConfig, PersonalizationConfig, Persona } from './types';
@@ -33,6 +32,7 @@ const FlashcardMode = React.lazy(() => import('./components/FlashcardMode').then
 const VideoMode = React.lazy(() => import('./components/VideoMode').then(m => ({ default: m.VideoMode })));
 const NotesVault = React.lazy(() => import('./components/NotesVault').then(m => ({ default: m.NotesVault })));
 const AppBuilderMode = React.lazy(() => import('./components/AppBuilderMode').then(m => ({ default: m.AppBuilderMode })));
+const RepoMode = React.lazy(() => import('./components/RepoMode').then(m => ({ default: m.RepoMode })));
 const HomeDashboard = React.lazy(() => import('./components/features/HomeDashboard').then(m => ({ default: m.HomeDashboard })));
 const LifeOS = React.lazy(() => import('./components/features/LifeOS').then(m => ({ default: m.LifeOS })));
 const SkillOS = React.lazy(() => import('./components/features/SkillOS').then(m => ({ default: m.SkillOS })));
@@ -116,7 +116,47 @@ const App: React.FC = () => {
   const [chatConfig, setChatConfig] = useState<ChatConfig>({ 
     model: 'gemini-2.5-flash', 
     useThinking: false, 
-    useGrounding: false
+    useGrounding: false,
+    interactionMode: 'default',
+    examMode: false,
+    integrityMode: false,
+    notesFormat: false,
+    reverseMode: false,
+    explainErrors: false,
+    multiPerspective: false,
+    moodDetection: true,
+    showConfidence: false,
+    eli5: false,
+    // Advanced Features
+    adaptiveLeveling: false,
+    conceptMapping: false,
+    selfVerification: false,
+    mistakeAnalyzer: false,
+    thoughtPath: false,
+    goalDriven: false,
+    cognitiveLoad: false,
+    learningCompass: false,
+    gamification: false,
+    contextGuard: false,
+    questionScorer: false,
+    hypotheticals: false,
+    knowledgeBoundaries: false,
+    // Next-Gen Cognitive
+    learningGap: false,
+    aiDebate: false,
+    conceptCompression: false,
+    tutorMemory: false,
+    explainMistakes: false,
+    confusionQuestions: false,
+    confidenceCorrectness: false,
+    knowledgeTimeline: false,
+    mentorEvolution: false,
+    socraticMethod: false,
+    assumptionExposure: false,
+    reverseLearning: false,
+    failureCases: false,
+    styleDetection: false,
+    selfLimit: false
   });
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -387,6 +427,7 @@ const App: React.FC = () => {
             case 'about': return <AboutPage />;
             case 'workspace': return <ImageMode />;
             case 'builder': return <AppBuilderMode />;
+            case 'repo': return <RepoMode />;
             case 'notes': return <NotesVault onStartChat={(ctx) => { handleSendMessage(ctx, []); handleViewChange('chat'); }} />;
             case 'life-os': return <LifeOS />;
             case 'skills': return <SkillOS />;
