@@ -2,31 +2,10 @@
 export enum Role {
   USER = 'user',
   MODEL = 'model',
+  SYSTEM = 'system'
 }
 
-export type ViewMode = 
-  | 'chat' 
-  | 'student' 
-  | 'code' 
-  | 'live' 
-  | 'voice' 
-  | 'workspace' 
-  | 'settings' 
-  | 'exam' 
-  | 'analytics' 
-  | 'planner' 
-  | 'mastery' 
-  | 'notes' 
-  | 'about' 
-  | 'builder'
-  | 'dashboard'
-  | 'life-os'
-  | 'skills'
-  | 'memory'
-  | 'creative'
-  | 'pricing'
-  | 'video'
-  | 'repo';
+export type ViewMode = 'chat' | 'student' | 'code' | 'image' | 'voice' | 'live' | 'exam' | 'flashcard' | 'planner' | 'notes' | 'analytics' | 'settings' | 'builder' | 'workspace' | 'dashboard' | 'memory' | 'about';
 
 export interface Attachment {
   id: string;
@@ -41,36 +20,16 @@ export interface Source {
   uri: string;
 }
 
-export interface MediaAction {
-  action: 'PLAY_MEDIA';
-  media_type: 'song' | 'video' | 'playlist' | 'podcast';
-  title: string;
-  artist?: string;
-  platform: 'youtube' | 'spotify';
-  url: string;
-  embedUrl?: string;
-  query: string;
-}
-
 export interface Message {
   id: string;
   role: Role;
   text: string;
   attachments?: Attachment[];
-  sources?: Source[];
   timestamp: number;
-  isError?: boolean;
   isStreaming?: boolean;
-  isPinned?: boolean;
-  isOffline?: boolean; // New flag for offline messages
-  mediaAction?: MediaAction;
-}
-
-export interface GeneratedFile {
-  name: string;
-  path: string;
-  content: string;
-  language: string;
+  isError?: boolean;
+  isOffline?: boolean;
+  sources?: Source[];
 }
 
 export interface ChatSession {
@@ -80,86 +39,42 @@ export interface ChatSession {
   updatedAt: number;
 }
 
-export interface StudentConfig {
-  topic: string;
-  mode: 'summary' | 'mcq' | '5mark' | '20mark' | 'simple';
-  mcqConfig?: {
-    count: number;
-    difficulty: 'Easy' | 'Medium' | 'Hard';
-  };
-  studyMaterial?: string;
-}
-
-export interface CodeConfig {
-  language: string;
-  task: 'debug' | 'explain' | 'optimize' | 'generate';
-}
-
-export type GeminiModel = 'gemini-2.5-flash' | 'gemini-3-pro-preview' | 'gemini-flash-lite-latest';
-export type AppLanguage = 'English' | 'Tamil' | 'Tanglish';
-export type InteractionMode = 'default' | 'teacher' | 'developer' | 'friend' | 'examiner';
-
 export interface Persona {
   id: string;
   name: string;
   description: string;
   systemPrompt: string;
-  isDefault?: boolean;
 }
 
 export interface ChatConfig {
-  model: GeminiModel;
+  model: string;
   useThinking: boolean;
   useGrounding: boolean;
+  interactionMode: 'standard' | 'teacher' | 'developer' | 'friend' | 'examiner';
   activePersonaId?: string;
   
-  // --- CORE FEATURES ---
-  interactionMode: InteractionMode;
+  // --- Student-Centric Features ---
+  examMode?: boolean;           // Strict syllabus answers
+  integrityMode?: boolean;      // Paraphrasing & Originality Score
+  notesMode?: boolean;          // Ask -> Notes Format
   
-  // --- STUDENT TOOLS ---
-  examMode: boolean;           // 8. Exam Mode
-  integrityMode: boolean;      // 9. Assignment Integrity
-  notesFormat: boolean;        // 10. Notes Generator
-  reverseMode: boolean;        // 11. Reverse Question Mode
+  // --- Advanced Cognitive Features ---
+  socraticMode?: boolean;       // Guide via questions
+  debateMode?: boolean;         // Challenge user views
+  reverseLearning?: boolean;    // Explain wrong to test user
+  learningGap?: boolean;        // Detect missing prerequisites
   
-  // --- AI ENHANCEMENTS ---
-  explainErrors: boolean;      // 12. Error Explanation
-  multiPerspective: boolean;   // 13. Multi-Answer
-  moodDetection: boolean;      // 15. Mood Detection
-  showConfidence: boolean;     // 12. Confidence Indicator (Trust-Weighted)
-  eli5: boolean;               // 13. ELI5
+  // --- Meta-Cognition & Trust ---
+  confidenceIndicator?: boolean;// High/Med/Low labels
+  assumptionExposure?: boolean; // List assumptions made
+  selfLimit?: boolean;          // Explicitly state AI limits
+  errorExplanation?: boolean;   // Explain why AI might be wrong
   
-  // --- ADVANCED EDUCATIONAL FEATURES (PREVIOUS) ---
-  adaptiveLeveling: boolean;   // 1. Adaptive Intelligence Leveling
-  conceptMapping: boolean;     // 2. Concept Dependency Mapping
-  selfVerification: boolean;   // 3. Self-Verification Mode
-  mistakeAnalyzer: boolean;    // 4. Mistake Pattern Analyzer
-  thoughtPath: boolean;        // 6. Thought-Path Visualization
-  goalDriven: boolean;         // 7. Goal-Driven Sessions
-  cognitiveLoad: boolean;      // 8. Cognitive Load Control
-  learningCompass: boolean;    // 10. AI Learning Compass
-  gamification: boolean;       // 11. Gamified Mastery Levels
-  contextGuard: boolean;       // 12. Context Switching Guard
-  questionScorer: boolean;     // 13. Question Quality Scorer
-  hypotheticals: boolean;      // 14. Hypothetical Scenario Generator
-  knowledgeBoundaries: boolean;// 15. Knowledge Boundary Detector
-
-  // --- NEXT-GEN COGNITIVE FEATURES (NEW) ---
-  learningGap: boolean;        // 1. Learning Gap Discovery
-  aiDebate: boolean;           // 2. AI Debate
-  conceptCompression: boolean; // 3. Concept Compression/Expansion
-  tutorMemory: boolean;        // 4. Long-Term Tutor Memory
-  explainMistakes: boolean;    // 5. Explain-My-Mistake
-  confusionQuestions: boolean; // 6. Question-Generation-From-Confusion
-  confidenceCorrectness: boolean; // 7. Confidence vs Correctness
-  knowledgeTimeline: boolean;  // 8. Knowledge Timeline Builder
-  mentorEvolution: boolean;    // 9. Mentor Personality Evolution
-  socraticMethod: boolean;     // 10. Socratic Teaching
-  assumptionExposure: boolean; // 11. Assumption Exposure
-  reverseLearning: boolean;    // 12. Reverse Learning (Explain It Wrong)
-  failureCases: boolean;       // 13. Real-World Failure Case
-  styleDetection: boolean;     // 14. Learning Style Detection
-  selfLimit: boolean;          // 15. AI Self-Limit Declaration
+  // --- Content Modifiers ---
+  eli5?: boolean;               // Explain Like I'm 5
+  multiPerspective?: boolean;   // 3 distinct viewpoints
+  failureCase?: boolean;        // Show real-world failure scenarios
+  moodDetection?: boolean;      // Adapt to user stress/confusion
 }
 
 export interface PersonalizationConfig {
@@ -168,6 +83,7 @@ export interface PersonalizationConfig {
   aboutYou: string;
   customInstructions: string;
   fontSize: 'small' | 'medium' | 'large';
+  responseStyle: 'concise' | 'balanced' | 'detailed'; // Added feature
 }
 
 export interface SystemConfig {
@@ -177,42 +93,16 @@ export interface SystemConfig {
   soundEffects: boolean;
 }
 
-export interface PromptTemplate {
-  id: string;
-  label: string;
-  prompt: string;
-  category?: string;
-}
-
-export interface SavedPrompt {
-  id: string;
-  title: string;
-  content: string;
-  category: string;
-}
-
-// --- MEMORY ENGINE ---
-export type MemoryCategory = 'core' | 'preference' | 'project' | 'emotional' | 'fact';
-
-export interface MemoryNode {
-  id: string;
-  content: string;
-  category: MemoryCategory;
-  tags: string[];
-  confidence: number;
-  timestamp: number;
-}
-
-// --- EXAM MODE TYPES ---
+// Exam Types
 export type ExamType = 'Quiz' | 'Unit Test' | 'Semester';
 export type ExamDifficulty = 'Easy' | 'Medium' | 'Hard' | 'Mixed';
-export type QuestionType = 'MCQ' | 'SHORT' | 'LONG';
+export type AppLanguage = 'English' | 'Tamil' | 'Tanglish';
 
 export interface ExamConfig {
   subject: string;
   examType: ExamType;
   difficulty: ExamDifficulty;
-  language: AppLanguage;
+  language: string;
   questionCount: number;
   includeTheory: boolean;
   durationMinutes: number;
@@ -220,8 +110,8 @@ export interface ExamConfig {
 
 export interface ExamQuestion {
   id: number;
-  type: QuestionType;
   text: string;
+  type: 'MCQ' | 'Theory';
   options?: string[];
   correctAnswer: string;
   marks: number;
@@ -242,49 +132,12 @@ export interface ExamSession {
   answers: Record<number, ExamAnswer>;
   createdAt: number;
   completedAt?: number;
-  isActive: boolean;
   totalScore?: number;
   maxScore?: number;
+  isActive: boolean;
 }
 
-// --- ANALYTICS ---
-export interface DailyStats {
-  date: string;
-  messagesSent: number;
-  minutesSpent: number;
-  examsTaken: number;
-}
-
-// --- STUDY PLANNER ---
-export interface Task {
-  id: string;
-  description: string;
-  completed: boolean;
-  durationMinutes: number;
-}
-
-export interface DayPlan {
-  day: string; // "Monday"
-  tasks: Task[];
-}
-
-export interface StudyPlan {
-  id: string;
-  topic: string;
-  weeklySchedule: DayPlan[];
-  createdAt: number;
-  startDate: string;
-}
-
-// --- TOPIC MASTERY ---
-export interface TopicMastery {
-  topic: string;
-  masteryLevel: number; // 0-100
-  status: 'Novice' | 'Intermediate' | 'Expert';
-  lastPracticed: number;
-}
-
-// --- FLASHCARDS ---
+// Flashcard Types
 export interface Flashcard {
   front: string;
   back: string;
@@ -298,7 +151,26 @@ export interface FlashcardSet {
   createdAt: number;
 }
 
-// --- NOTES ---
+// Study Planner Types
+export interface Task {
+  description: string;
+  durationMinutes: number;
+  completed: boolean;
+}
+
+export interface DaySchedule {
+  day: string;
+  tasks: Task[];
+}
+
+export interface StudyPlan {
+  id: string;
+  topic: string;
+  startDate: number;
+  weeklySchedule: DaySchedule[];
+}
+
+// Note Types
 export interface Note {
   id: string;
   title: string;
@@ -308,7 +180,50 @@ export interface Note {
   updatedAt: number;
 }
 
-// --- FEEDBACK ---
+// Saved Prompt Types
+export interface SavedPrompt {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+}
+
+// Prompt Template Types
+export interface PromptTemplate {
+  id: string;
+  label: string;
+  prompt: string;
+}
+
+// Analytics Types
+export interface DailyStats {
+  date: string;
+  messagesSent: number;
+  minutesSpent: number;
+  examsTaken: number;
+}
+
+// App Builder Types
+export interface GeneratedFile {
+  name: string;
+  path: string;
+  content: string;
+  language: string;
+}
+
+// Memory Types
+export type MemoryCategory = 'fact' | 'preference' | 'project' | 'core' | 'emotional';
+
+export interface MemoryNode {
+  id: string;
+  content: string;
+  category: MemoryCategory;
+  tags: string[];
+  confidence: number;
+  timestamp: number;
+}
+
+// Feedback Types
 export interface AppFeedback {
   id: string;
   rating: number;
@@ -317,7 +232,14 @@ export interface AppFeedback {
   timestamp: number;
 }
 
-// --- AUTHENTICATION & TRUST ---
+// Live Mode
+export interface MediaAction {
+  type: 'play_media';
+  query: string;
+  platform: 'youtube' | 'spotify';
+}
+
+// Auth & Trust Types
 export interface AuthUser {
   id: string;
   email: string;
@@ -336,5 +258,5 @@ export interface TrustFactors {
     locationStable: boolean;
     usageConsistent: boolean;
     recentFailure: boolean;
-  }
+  };
 }

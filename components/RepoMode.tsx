@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Github, Search, Loader2, ArrowRight, Book, GitBranch, AlertCircle, FileText, Code } from 'lucide-react';
 import { sendMessageToGeminiStream } from '../services/gemini';
@@ -103,45 +104,7 @@ export const RepoMode: React.FC = () => {
         model: 'gemini-2.5-flash',
         useThinking: true,
         useGrounding: true,
-        interactionMode: 'developer',
-        examMode: false,
-        integrityMode: false,
-        notesFormat: false,
-        reverseMode: false,
-        explainErrors: false,
-        multiPerspective: false,
-        moodDetection: false,
-        showConfidence: false,
-        eli5: false,
-        adaptiveLeveling: false,
-        conceptMapping: false,
-        selfVerification: false,
-        mistakeAnalyzer: false,
-        thoughtPath: false,
-        goalDriven: false,
-        cognitiveLoad: false,
-        learningCompass: false,
-        gamification: false,
-        contextGuard: false,
-        questionScorer: false,
-        hypotheticals: false,
-        knowledgeBoundaries: false,
-        // Next-Gen Cognitive
-        learningGap: false,
-        aiDebate: false,
-        conceptCompression: false,
-        tutorMemory: false,
-        explainMistakes: false,
-        confusionQuestions: false,
-        confidenceCorrectness: false,
-        knowledgeTimeline: false,
-        mentorEvolution: false,
-        socraticMethod: false,
-        assumptionExposure: false,
-        reverseLearning: false,
-        failureCases: false,
-        styleDetection: false,
-        selfLimit: false
+        interactionMode: 'developer'
       };
 
       await sendMessageToGeminiStream(
@@ -149,7 +112,7 @@ export const RepoMode: React.FC = () => {
         initialPrompt, 
         [], 
         config, // Enable grounding to crawl if needed
-        { nickname: 'Developer', occupation: 'Engineer', aboutYou: '', customInstructions: '', fontSize: 'medium' },
+        { nickname: 'Developer', occupation: 'Engineer', aboutYou: '', customInstructions: '', fontSize: 'medium', responseStyle: 'concise' },
         (text) => {
            setMessages(prev => prev.map(m => m.id === botMsgId ? { ...m, text } : m));
         },
@@ -183,45 +146,7 @@ export const RepoMode: React.FC = () => {
       model: 'gemini-2.5-flash',
       useThinking: false,
       useGrounding: true,
-      interactionMode: 'developer',
-      examMode: false,
-      integrityMode: false,
-      notesFormat: false,
-      reverseMode: false,
-      explainErrors: false,
-      multiPerspective: false,
-      moodDetection: false,
-      showConfidence: false,
-      eli5: false,
-      adaptiveLeveling: false,
-      conceptMapping: false,
-      selfVerification: false,
-      mistakeAnalyzer: false,
-      thoughtPath: false,
-      goalDriven: false,
-      cognitiveLoad: false,
-      learningCompass: false,
-      gamification: false,
-      contextGuard: false,
-      questionScorer: false,
-      hypotheticals: false,
-      knowledgeBoundaries: false,
-      // Next-Gen Cognitive
-      learningGap: false,
-      aiDebate: false,
-      conceptCompression: false,
-      tutorMemory: false,
-      explainMistakes: false,
-      confusionQuestions: false,
-      confidenceCorrectness: false,
-      knowledgeTimeline: false,
-      mentorEvolution: false,
-      socraticMethod: false,
-      assumptionExposure: false,
-      reverseLearning: false,
-      failureCases: false,
-      styleDetection: false,
-      selfLimit: false
+      interactionMode: 'developer'
     };
 
     try {
@@ -230,7 +155,7 @@ export const RepoMode: React.FC = () => {
         text, 
         [], 
         config, 
-        { nickname: 'Developer', occupation: 'Engineer', aboutYou: '', customInstructions: '', fontSize: 'medium' },
+        { nickname: 'Developer', occupation: 'Engineer', aboutYou: '', customInstructions: '', fontSize: 'medium', responseStyle: 'concise' },
         (streamText) => {
            setMessages(prev => prev.map(m => m.id === botMsgId ? { ...m, text: streamText } : m));
         },

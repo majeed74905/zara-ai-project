@@ -17,6 +17,7 @@ const STORAGE_KEY = 'zara_theme';
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentThemeName, setCurrentThemeName] = useState<ThemeName>('dark');
 
+  // Initial Load
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as ThemeName;
     if (stored && THEMES[stored]) {
@@ -24,25 +25,40 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  // Theme Application Logic
   useEffect(() => {
     const root = document.documentElement;
     const themeConfig = THEMES[currentThemeName];
 
-    root.classList.remove(...Object.keys(THEMES).map(t => `theme-${t}`));
-    root.classList.remove('dark');
+    // 1. Clean up old classes
+    // We remove ALL possible theme classes to avoid conflicts
+    const allThemeClasses = Object.keys(THEMES).map(t => `theme-${t}`);
+    root.classList.remove(...allThemeClasses);
+    root.classList.remove('dark', 'light'); // Remove generic markers too
 
+    // 2. Add new class
     root.classList.add(`theme-${currentThemeName}`);
     
-    const isDark = !['light', 'glass', 'pastel'].includes(currentThemeName);
-    if (isDark) root.classList.add('dark');
+    // 3. Handle Tailwind 'dark' mode utility
+    // Most themes are dark, so we default to adding 'dark' unless it's explicitly a light theme
+    const lightThemes = ['light', 'glass', 'pastel'];
+    if (!lightThemes.includes(currentThemeName)) {
+      root.classList.add('dark');
+    }
 
+    // 4. Persist
     localStorage.setItem(STORAGE_KEY, currentThemeName);
 
+    // 5. Dynamic CSS Properties (Gradient Overlays)
     if (themeConfig.gradientOverlay) {
         document.body.style.setProperty('--gradient-overlay', themeConfig.gradientOverlay);
     } else {
         document.body.style.setProperty('--gradient-overlay', 'none');
     }
+    
+    // 6. Force body background update immediately (prevents flashes)
+    document.body.style.backgroundColor = themeConfig.colors.background;
+    document.body.style.color = themeConfig.colors.textMain;
 
   }, [currentThemeName]);
 

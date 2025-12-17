@@ -6,9 +6,14 @@ body {
   color: var(--text-main);
 }
 
+/* 
+  We define variables for each theme class.
+  These map directly to the colors in our themes.ts
+*/
+
 /* Light (Default) */
 :root, .theme-light {
-  --bg-color: #F3F4F6;
+  --bg-color: #FFFFFF;
   --surface-color: #FFFFFF;
   --surface-highlight: #F9FAFB;
   --text-main: #030712;

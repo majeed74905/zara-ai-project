@@ -1,8 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Command, ArrowRight, Zap, Settings, MessageSquare, BookOpen, PenTool, Hammer, ClipboardCheck } from 'lucide-react';
-import { ViewMode } from '../types';
-import { ThemeName } from '../theme/types';
+import { Command, ArrowRight, Zap, Settings, MessageSquare, BookOpen, PenTool, Hammer, ClipboardCheck } from 'lucide-react';
 
 interface CommandPaletteProps {
   isOpen: boolean;

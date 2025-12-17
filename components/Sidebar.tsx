@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MessageSquare, GraduationCap, Code2, Layout, Settings, Sparkles, Mic, Radio, Plus, Trash2, MessageCircle, Sun, Moon, Edit2, Check, X, Image as ImageIcon, ClipboardCheck, BarChart3, Calendar, PenTool, Info, Hammer, Heart, Brain, Zap, FolderOpen, Lightbulb, RotateCw } from 'lucide-react';
+import { MessageSquare, GraduationCap, Code2, Settings, Sparkles, Mic, Radio, Plus, Trash2, MessageCircle, Sun, Moon, Edit2, Check, X, Image as ImageIcon, ClipboardCheck, Hammer, Info, Brain } from 'lucide-react';
 import { ViewMode, ChatSession } from '../types';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -141,6 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="space-y-1">
           <p className="px-2 text-[10px] font-bold text-text-sub/40 uppercase tracking-widest mb-2">Core</p>
           <NavItem icon={MessageSquare} label="Chat" active={currentView === 'chat'} onClick={() => onViewChange('chat')} />
+          {/* Memory removed from sidebar as requested */}
           
           <p className="px-2 text-[10px] font-bold text-text-sub/40 uppercase tracking-widest mt-6 mb-2">Studio</p>
           <NavItem icon={Radio} label="Live" active={currentView === 'live'} onClick={() => onViewChange('live')} />
@@ -242,8 +243,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
         
         <div className="flex items-center justify-between pt-1">
-           <button onClick={onOpenFeedback} className="text-[10px] text-text-sub hover:text-primary w-full text-center">
-              Send Feedback
+           <button onClick={() => onViewChange('about')} className="text-[10px] text-text-sub hover:text-primary w-full text-center flex items-center justify-center gap-1">
+              <Info className="w-3 h-3" /> About
            </button>
         </div>
       </div>

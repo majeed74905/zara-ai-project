@@ -11,15 +11,11 @@ export const MODE_THEME_MAPPING: Partial<Record<ViewMode, ThemeName>> = {
   exam: 'light', // cleaner for reading
   voice: 'glass',
   workspace: 'royal',
-  chat: 'dark', // default
+  chat: 'dark', // Updated to dark as per user request
   planner: 'light',
   analytics: 'midnight',
   dashboard: 'light',
-  'life-os': 'pastel',
-  skills: 'midnight',
   memory: 'glass',
-  creative: 'aurora',
-  pricing: 'royal',
   builder: 'midnight'
 };
 

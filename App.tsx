@@ -1,103 +1,53 @@
-import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { Menu, Sparkles, Hammer, Heart, WifiOff, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
-import { Message, Role, Attachment, ViewMode, ChatConfig, PersonalizationConfig, Persona } from './types';
-import { sendMessageToGeminiStream } from './services/gemini';
-import { OfflineService } from './services/offlineService';
+
+import React, { useState, useRef, useEffect } from 'react';
+import { ViewMode, Message, Role, Attachment, ChatConfig, PersonalizationConfig, Persona } from './types';
+import { Sidebar } from './components/Sidebar';
 import { MessageItem } from './components/MessageItem';
 import { InputArea } from './components/InputArea';
+import { StudentMode } from './components/StudentMode';
+import { CodeMode } from './components/CodeMode';
+import { ImageMode } from './components/ImageMode';
+import { VideoMode } from './components/VideoMode';
+import { VoiceMode } from './components/VoiceMode';
+import { LiveMode } from './components/LiveMode';
+import { ExamMode } from './components/ExamMode';
+import { FlashcardMode } from './components/FlashcardMode';
+import { StudyPlanner } from './components/StudyPlanner';
+import { NotesVault } from './components/NotesVault';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { SettingsModal } from './components/SettingsModal';
-import { Sidebar } from './components/Sidebar';
-import { ChatControls } from './components/ChatControls';
+import { CommandPalette } from './components/CommandPalette';
 import { FeedbackModal } from './components/FeedbackModal';
+import { AppBuilderMode } from './components/AppBuilderMode';
+import { HomeDashboard } from './components/features/HomeDashboard';
+import { MemoryVault } from './components/features/MemoryVault';
+import { AboutPage } from './components/AboutPage';
+import { ChatControls } from './components/ChatControls';
 import { useChatSessions } from './hooks/useChatSessions';
-import { useTheme } from './theme/ThemeContext'; 
 import { useAppMemory } from './hooks/useAppMemory';
 import { useModeThemeSync } from './hooks/useModeThemeSync';
-import { THEMES } from './theme/themes';
-import { ThemeName } from './theme/types';
-import { CommandPalette } from './components/CommandPalette';
+import { useTheme } from './theme/ThemeContext';
+import { sendMessageToGeminiStream } from './services/gemini';
+import { OfflineService } from './services/offlineService';
+import { Sparkles, Hammer, Heart } from 'lucide-react';
 
-// --- LAZY LOAD HEAVY COMPONENTS ---
-// Code Splitting to reduce initial bundle size by 60%
-const StudentMode = React.lazy(() => import('./components/StudentMode').then(m => ({ default: m.StudentMode })));
-const CodeMode = React.lazy(() => import('./components/CodeMode').then(m => ({ default: m.CodeMode })));
-const LiveMode = React.lazy(() => import('./components/LiveMode').then(m => ({ default: m.LiveMode })));
-const VoiceMode = React.lazy(() => import('./components/VoiceMode').then(m => ({ default: m.VoiceMode })));
-const ImageMode = React.lazy(() => import('./components/ImageMode').then(m => ({ default: m.ImageMode })));
-const ExamMode = React.lazy(() => import('./components/ExamMode').then(m => ({ default: m.ExamMode })));
-const AnalyticsDashboard = React.lazy(() => import('./components/AnalyticsDashboard').then(m => ({ default: m.AnalyticsDashboard })));
-const StudyPlanner = React.lazy(() => import('./components/StudyPlanner').then(m => ({ default: m.StudyPlanner })));
-const AboutPage = React.lazy(() => import('./components/AboutPage').then(m => ({ default: m.AboutPage })));
-const FlashcardMode = React.lazy(() => import('./components/FlashcardMode').then(m => ({ default: m.FlashcardMode })));
-const VideoMode = React.lazy(() => import('./components/VideoMode').then(m => ({ default: m.VideoMode })));
-const NotesVault = React.lazy(() => import('./components/NotesVault').then(m => ({ default: m.NotesVault })));
-const AppBuilderMode = React.lazy(() => import('./components/AppBuilderMode').then(m => ({ default: m.AppBuilderMode })));
-const RepoMode = React.lazy(() => import('./components/RepoMode').then(m => ({ default: m.RepoMode })));
-const HomeDashboard = React.lazy(() => import('./components/features/HomeDashboard').then(m => ({ default: m.HomeDashboard })));
-const LifeOS = React.lazy(() => import('./components/features/LifeOS').then(m => ({ default: m.LifeOS })));
-const SkillOS = React.lazy(() => import('./components/features/SkillOS').then(m => ({ default: m.SkillOS })));
-const MemoryVault = React.lazy(() => import('./components/features/MemoryVault').then(m => ({ default: m.MemoryVault })));
-const CreativeStudio = React.lazy(() => import('./components/features/CreativeStudio').then(m => ({ default: m.CreativeStudio })));
-const PricingView = React.lazy(() => import('./components/os/PricingView').then(m => ({ default: m.PricingView })));
-
-const STORAGE_KEY_PERSONALIZATION = 'zara_personalization';
-
-// Loading Fallback
-const ScreenLoader = () => (
-  <div className="h-full flex items-center justify-center bg-transparent">
-    <Loader2 className="w-8 h-8 text-primary animate-spin" />
-  </div>
-);
-
-const App: React.FC = () => {
-  const { lastView, updateView, systemConfig, updateSystemConfig } = useAppMemory();
-  const { currentThemeName, setTheme } = useTheme();
-
-  const [currentView, setCurrentView] = useState<ViewMode>('chat');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isCommandOpen, setIsCommandOpen] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-
-  // Scroll Module State
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const [showScrollBottom, setShowScrollBottom] = useState(false);
-
-  useEffect(() => {
-     const handleOnline = () => setIsOnline(true);
-     const handleOffline = () => setIsOnline(false);
-     window.addEventListener('online', handleOnline);
-     window.addEventListener('offline', handleOffline);
-     return () => {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-     };
-  }, []);
-
-  useEffect(() => {
-     if (lastView) {
-        setCurrentView(lastView);
-     }
-  }, [lastView]);
-
-  const handleViewChange = (view: ViewMode) => {
-    setCurrentView(view);
-    updateView(view);
-    if(view === 'settings') setIsSettingsOpen(true);
-    setIsSidebarOpen(false);
-  };
-
-  useModeThemeSync(currentView, systemConfig.autoTheme, setTheme);
+function App() {
+  const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   
-  const [personalization, setPersonalization] = useState<PersonalizationConfig>({
-    nickname: '',
-    occupation: '',
-    aboutYou: '',
-    customInstructions: '',
-    fontSize: 'medium'
-  });
+  // Modals
+  const [isSettingsOpen, setSettingsOpen] = useState(false);
+  const [isCmdPaletteOpen, setCmdPaletteOpen] = useState(false);
+  const [isFeedbackOpen, setFeedbackOpen] = useState(false);
 
+  const abortRef = useRef(false);
+  const shouldAutoScrollRef = useRef(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Hooks
   const { 
     sessions, 
     currentSessionId, 
@@ -109,184 +59,63 @@ const App: React.FC = () => {
     clearCurrentSession 
   } = useChatSessions();
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const [chatConfig, setChatConfig] = useState<ChatConfig>({ 
-    model: 'gemini-2.5-flash', 
-    useThinking: false, 
-    useGrounding: false,
-    interactionMode: 'default',
-    examMode: false,
-    integrityMode: false,
-    notesFormat: false,
-    reverseMode: false,
-    explainErrors: false,
-    multiPerspective: false,
-    moodDetection: true,
-    showConfidence: false,
-    eli5: false,
-    // Advanced Features
-    adaptiveLeveling: false,
-    conceptMapping: false,
-    selfVerification: false,
-    mistakeAnalyzer: false,
-    thoughtPath: false,
-    goalDriven: false,
-    cognitiveLoad: false,
-    learningCompass: false,
-    gamification: false,
-    contextGuard: false,
-    questionScorer: false,
-    hypotheticals: false,
-    knowledgeBoundaries: false,
-    // Next-Gen Cognitive
-    learningGap: false,
-    aiDebate: false,
-    conceptCompression: false,
-    tutorMemory: false,
-    explainMistakes: false,
-    confusionQuestions: false,
-    confidenceCorrectness: false,
-    knowledgeTimeline: false,
-    mentorEvolution: false,
-    socraticMethod: false,
-    assumptionExposure: false,
-    reverseLearning: false,
-    failureCases: false,
-    styleDetection: false,
-    selfLimit: false
+  const { lastView, updateView, systemConfig, updateSystemConfig } = useAppMemory();
+  const { setTheme } = useTheme();
+  useModeThemeSync(currentView, systemConfig.autoTheme, setTheme);
+
+  // State initialization
+  const [personalization, setPersonalization] = useState<PersonalizationConfig>({
+    nickname: 'Guest',
+    occupation: 'Student',
+    aboutYou: '',
+    customInstructions: '',
+    fontSize: 'medium',
+    responseStyle: 'balanced'
   });
-  
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const shouldAutoScrollRef = useRef(true); 
-  const abortRef = useRef<boolean>(false);
 
+  const [chatConfig, setChatConfig] = useState<ChatConfig>({
+    model: 'gemini-2.5-flash',
+    useThinking: false,
+    useGrounding: true,
+    interactionMode: 'standard',
+    // Default cognitive features
+    confidenceIndicator: false,
+    learningGap: true, 
+    moodDetection: true
+  });
+
+  // Load initial view - defaulting to chat/dashboard flow
   useEffect(() => {
-    const storedPersonalization = localStorage.getItem(STORAGE_KEY_PERSONALIZATION);
-    if (storedPersonalization) {
-      try {
-        setPersonalization(JSON.parse(storedPersonalization));
-      } catch(e) {
-        console.error("Failed to parse personalization", e);
-      }
-    }
+    // Override lastView to always start on chat for this new UI flow
+    setCurrentView('chat'); 
   }, []);
 
+  // Load session messages when selected
   useEffect(() => {
-    const handleGlobalKeys = (e: KeyboardEvent) => {
-       if (e.ctrlKey && e.key === 'n') {
-          e.preventDefault();
-          handleNewChat();
-       }
-       if (e.ctrlKey && e.key === 'k') {
-          e.preventDefault();
-          setIsCommandOpen(true);
-       }
-    };
-    window.addEventListener('keydown', handleGlobalKeys);
-    return () => window.removeEventListener('keydown', handleGlobalKeys);
-  }, []);
-
-  const handlePersonalizationChange = (config: PersonalizationConfig) => {
-    setPersonalization(config);
-    localStorage.setItem(STORAGE_KEY_PERSONALIZATION, JSON.stringify(config));
-  }
-
-  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
-  };
-
-  const handleScrollToTop = () => {
-    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleScroll = () => {
-    if (!scrollContainerRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-    
-    // Toggle Scroll Top Button
-    setShowScrollTop(scrollTop > 400);
-
-    // Toggle Scroll Bottom Button
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    const isAtBottom = distanceFromBottom < 100;
-    setShowScrollBottom(!isAtBottom);
-    
-    shouldAutoScrollRef.current = isAtBottom;
-  };
-
-  useEffect(() => {
-    if (currentView === 'chat' && shouldAutoScrollRef.current) {
-       scrollToBottom('smooth');
-    }
-  }, [messages, currentView]);
-
-  const handleNewChat = () => {
-    clearCurrentSession();
-    setMessages([]);
-    handleViewChange('chat');
-    setIsSidebarOpen(false);
-    setEditingMessage(null);
-    shouldAutoScrollRef.current = true;
-  };
-
-  const handleSelectSession = (id: string) => {
-    const msgs = loadSession(id);
-    setMessages(msgs);
-    handleViewChange('chat');
-    setIsSidebarOpen(false);
-    setEditingMessage(null);
-    shouldAutoScrollRef.current = true;
-    setTimeout(() => scrollToBottom(), 100);
-  };
-
-  const handleDeleteSession = (id: string) => {
-    deleteSession(id);
-    if (currentSessionId === id) {
+    if (currentSessionId) {
+      setMessages(loadSession(currentSessionId));
+    } else {
       setMessages([]);
     }
-  };
+  }, [currentSessionId]);
 
-  const handleStop = () => {
-    if (isLoading) {
-      abortRef.current = true;
-      setIsLoading(false);
+  const scrollToBottom = () => {
+    if (shouldAutoScrollRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   };
 
-  const handleStartEdit = (message: Message) => {
-    setEditingMessage(message);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingMessage(null);
-  };
-
-  const handleQuickAction = (text: string) => {
-    handleSendMessage(text, []);
-  };
-
-  const handleCommandAction = (action: string, payload?: any) => {
-    if (action === 'new-chat') handleNewChat();
-    if (action === 'switch-mode') handleViewChange(payload);
-    if (action === 'open-settings') setIsSettingsOpen(true);
-    if (action === 'theme-next') {
-        const themes = Object.keys(THEMES) as ThemeName[];
-        const currentIndex = themes.indexOf(currentThemeName);
-        const nextTheme = themes[(currentIndex + 1) % themes.length];
-        setTheme(nextTheme);
-    }
-  };
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSendMessage = async (text: string, attachments: Attachment[]) => {
     abortRef.current = false;
     shouldAutoScrollRef.current = true;
-    scrollToBottom();
+    const isOnline = navigator.onLine;
 
     let historyToUse = messages;
+
     if (editingMessage) {
       const editIndex = messages.findIndex(m => m.id === editingMessage.id);
       if (editIndex !== -1) {
@@ -303,38 +132,27 @@ const App: React.FC = () => {
       timestamp: Date.now(),
     };
 
-    // Optimistic Update
     const msgsWithUser = [...historyToUse, newUserMsg];
     setMessages(msgsWithUser);
     setIsLoading(true);
 
     const botMsgId = crypto.randomUUID();
     
-    // --- OFFLINE MODE HANDLER ---
+    // OFFLINE
     if (!isOnline) {
        setTimeout(async () => {
           const offlineResponse = await OfflineService.processMessage(text, personalization, handleViewChange);
-          
-          const offlineBotMsg: Message = {
-             id: botMsgId,
-             role: Role.MODEL,
-             text: offlineResponse,
-             timestamp: Date.now(),
-             isOffline: true
-          };
-          
+          const offlineBotMsg: Message = { id: botMsgId, role: Role.MODEL, text: offlineResponse, timestamp: Date.now(), isOffline: true };
           const finalMessages = [...msgsWithUser, offlineBotMsg];
           setMessages(finalMessages);
           setIsLoading(false);
-          
-          if (currentSessionId) updateSession(currentSessionId, finalMessages);
-          else createSession(finalMessages);
-          
+          if (!currentSessionId) createSession(finalMessages);
+          else updateSession(currentSessionId, finalMessages);
        }, 600);
        return;
     }
 
-    // --- ONLINE GEMINI HANDLER ---
+    // ONLINE
     const initialBotMsg: Message = {
         id: botMsgId,
         role: Role.MODEL,
@@ -343,7 +161,6 @@ const App: React.FC = () => {
         isStreaming: true
     };
     
-    // Set initial streaming state
     setMessages(prev => [...prev, initialBotMsg]);
 
     try {
@@ -356,14 +173,12 @@ const App: React.FC = () => {
          }
       }
 
-      // --- THROTTLING LOGIC ---
-      // We buffer chunks and only update React state every X ms
       let bufferText = "";
       let lastUpdateTs = Date.now();
       const THROTTLE_MS = 80; 
 
       const { text: finalText, sources } = await sendMessageToGeminiStream(
-        historyToUse, 
+        msgsWithUser, 
         text, 
         attachments, 
         chatConfig,
@@ -386,16 +201,15 @@ const App: React.FC = () => {
       
       if (abortRef.current) return;
 
-      // Final strict update to ensure nothing was lost in throttle
       const finalBotMsg = { ...initialBotMsg, text: finalText, sources, isStreaming: false };
       const finalMessages = [...msgsWithUser, finalBotMsg];
       
       setMessages(finalMessages);
       
-      if (currentSessionId) {
-        updateSession(currentSessionId, finalMessages);
+      if (!currentSessionId) {
+         createSession(finalMessages);
       } else {
-        createSession(finalMessages);
+         updateSession(currentSessionId, finalMessages);
       }
 
     } catch (error: any) {
@@ -410,205 +224,182 @@ const App: React.FC = () => {
     }
   };
 
-  const renderContent = () => {
-    // Wrap dynamic content in Suspense for lazy loading
-    return (
-      <Suspense fallback={<ScreenLoader />}>
-        {(() => {
-          switch (currentView) {
-            case 'dashboard': return <HomeDashboard onViewChange={handleViewChange} />;
-            case 'student': return <StudentMode />;
-            case 'code': return <CodeMode />;
-            case 'live': return <LiveMode personalization={personalization} />;
-            case 'voice': return <VoiceMode />;
-            case 'exam': return <ExamMode />;
-            case 'analytics': return <AnalyticsDashboard />;
-            case 'planner': return <StudyPlanner />;
-            case 'about': return <AboutPage />;
-            case 'workspace': return <ImageMode />;
-            case 'builder': return <AppBuilderMode />;
-            case 'repo': return <RepoMode />;
-            case 'notes': return <NotesVault onStartChat={(ctx) => { handleSendMessage(ctx, []); handleViewChange('chat'); }} />;
-            case 'life-os': return <LifeOS />;
-            case 'skills': return <SkillOS />;
-            case 'memory': return <MemoryVault />;
-            case 'creative': return <CreativeStudio />;
-            case 'pricing': return <PricingView />;
-            case 'mastery': return <FlashcardMode />;
-            case 'video': return <VideoMode />;
-            case 'chat':
-            default:
-              const fontSizeClass = personalization.fontSize === 'large' ? 'text-lg' : personalization.fontSize === 'small' ? 'text-sm' : 'text-base';
-              return (
-                <div className={`flex-1 flex flex-col h-full relative animate-fade-in ${fontSizeClass}`}>
-                  <ChatControls 
-                     config={chatConfig} 
-                     setConfig={setChatConfig} 
-                     currentSession={currentSessionId ? sessions.find(s => s.id === currentSessionId) || null : null}
-                  />
-                  
-                  {/* Floating Scroll Module */}
-                  <div className="absolute bottom-4 right-6 flex flex-col gap-2 z-30 pointer-events-none">
-                    {showScrollTop && (
-                      <button 
-                        onClick={handleScrollToTop}
-                        className="pointer-events-auto p-2.5 bg-surface/80 backdrop-blur-md border border-border rounded-full shadow-xl text-text-sub hover:text-primary hover:bg-surfaceHighlight transition-all hover:scale-110 active:scale-95"
-                        title="Scroll to Top"
-                      >
-                        <ArrowUp className="w-5 h-5" />
-                      </button>
-                    )}
-                    {showScrollBottom && (
-                      <button 
-                        onClick={() => scrollToBottom('smooth')}
-                        className="pointer-events-auto p-2.5 bg-surface/80 backdrop-blur-md border border-border rounded-full shadow-xl text-text-sub hover:text-primary hover:bg-surfaceHighlight transition-all hover:scale-110 active:scale-95"
-                        title="Scroll to Bottom"
-                      >
-                        <ArrowDown className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
+  const handleStop = () => {
+    abortRef.current = true;
+    setIsLoading(false);
+    setMessages(prev => prev.map(m => m.isStreaming ? { ...m, isStreaming: false } : m));
+  };
 
-                  <div 
-                    ref={scrollContainerRef}
-                    onScroll={handleScroll}
-                    className="flex-1 overflow-y-auto px-4 md:px-0 scroll-smooth"
-                  >
-                    <div className="max-w-3xl mx-auto h-full flex flex-col">
-                      {messages.length === 0 ? (
-                        <div className="flex-1 flex flex-col items-center justify-center p-6 animate-fade-in z-10">
-                           <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(139,92,246,0.15)] backdrop-blur-xl border border-white/10 relative group cursor-default">
-                              <Sparkles className="w-10 h-10 text-primary transition-transform duration-700 group-hover:rotate-180" />
-                              <div className="absolute inset-0 rounded-3xl bg-primary/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                           </div>
-                           <div className="text-center mb-10 space-y-2">
-                              <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
-                                <span className="text-text-sub font-light opacity-60 block text-2xl md:text-3xl mb-1">Hello, I'm</span>
-                                <span className="bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent">Zara AI</span>
-                              </h1>
-                              <p className="text-lg text-text-sub font-light max-w-md mx-auto">
-                                 What would you like to do?
-                              </p>
-                           </div>
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-lg">
-                              <button onClick={() => handleViewChange('builder')} className="p-4 rounded-xl bg-surface/50 border border-border hover:border-primary/50 hover:bg-surfaceHighlight transition-all text-left group flex items-center gap-4">
-                                 <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
-                                    <Hammer className="w-5 h-5" />
-                                 </div>
-                                 <div>
-                                   <span className="block font-medium text-text mb-0.5 group-hover:text-primary transition-colors">App Builder</span>
-                                   <span className="text-xs text-text-sub uppercase tracking-wider">Full Stack</span>
-                                 </div>
-                              </button>
-                              <button onClick={() => handleQuickAction("I'm feeling a bit stressed and need to talk.")} className="p-4 rounded-xl bg-surface/50 border border-border hover:border-primary/50 hover:bg-surfaceHighlight transition-all text-left group flex items-center gap-4">
-                                 <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform">
-                                    <Heart className="w-5 h-5" />
-                                 </div>
-                                 <div>
-                                   <span className="block font-medium text-text mb-0.5 group-hover:text-primary transition-colors">Emotional Support</span>
-                                   <span className="text-xs text-text-sub uppercase tracking-wider">Well-being</span>
-                                 </div>
-                              </button>
-                           </div>
-                           {personalization.nickname && (
-                              <p className="mt-8 text-xs text-text-sub/40 font-mono">
-                                 USER: {personalization.nickname.toUpperCase()}
-                              </p>
-                           )}
-                        </div>
-                      ) : (
-                        <div className="flex-1 py-6 space-y-2">
-                          {messages.map((msg) => (
-                            <MessageItem 
-                              key={msg.id} 
-                              message={msg} 
-                              onEdit={handleStartEdit} 
-                            />
-                          ))}
-                          <div ref={messagesEndRef} className="h-4" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex-shrink-0 pb-4 pt-2 z-10 bg-gradient-to-t from-background via-background to-transparent">
-                    <InputArea 
-                      onSendMessage={handleSendMessage} 
-                      onStop={handleStop}
-                      isLoading={isLoading} 
-                      disabled={false}
-                      isOffline={!isOnline}
-                      editMessage={editingMessage}
-                      onCancelEdit={handleCancelEdit}
-                      viewMode={currentView}
-                    />
-                  </div>
-                </div>
-              );
-          }
-        })()}
-      </Suspense>
-    );
+  const handleNewChat = () => {
+    createSession([]);
+    setMessages([]);
+    setCurrentView('chat');
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  };
+
+  const handleViewChange = (view: ViewMode) => {
+    setCurrentView(view);
+    updateView(view);
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  };
+
+  const handleCommand = (action: string, payload?: any) => {
+    if (action === 'switch-mode') handleViewChange(payload);
+    if (action === 'new-chat') handleNewChat();
+    if (action === 'open-settings') setSettingsOpen(true);
   };
 
   return (
-    <div className={`flex h-screen bg-background overflow-hidden text-text font-sans transition-colors duration-300 ${systemConfig.density === 'compact' ? 'text-sm' : ''}`}>
+    <div className="flex h-screen bg-background text-text overflow-hidden font-sans selection:bg-primary/20">
       <Sidebar 
-        currentView={currentView} 
-        onViewChange={handleViewChange} 
+        currentView={currentView}
+        onViewChange={handleViewChange}
         isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
+        onClose={() => setSidebarOpen(false)}
         sessions={sessions}
         activeSessionId={currentSessionId}
         onNewChat={handleNewChat}
-        onSelectSession={handleSelectSession}
+        onSelectSession={(id) => { 
+            loadSession(id); 
+            if(window.innerWidth < 768) setSidebarOpen(false);
+        }}
         onRenameSession={renameSession}
-        onDeleteSession={handleDeleteSession}
-        onOpenFeedback={() => setIsFeedbackOpen(true)}
+        onDeleteSession={deleteSession}
+        onOpenFeedback={() => setFeedbackOpen(true)}
       />
 
       <div className="flex-1 flex flex-col h-full relative w-full">
-        {/* Offline Banner */}
-        {!isOnline && (
-            <div className="bg-orange-500/90 backdrop-blur text-white text-xs font-bold py-2 px-4 text-center z-50 flex items-center justify-center gap-2 animate-fade-in shadow-lg">
-              <WifiOff className="w-3.5 h-3.5" />
-              <span>Offline Mode &bull; Searching Local Memory Only</span>
+        {/* Mobile Sidebar Toggle (Floating/Hidden if ChatControls has header) 
+            We now rely on ChatControls or Sidebar gesture on mobile mostly, 
+            but keeping a trigger area is good practice. 
+        */}
+        
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-hidden relative flex flex-col">
+          {currentView === 'chat' && (
+            <div className="flex flex-col h-full w-full relative">
+               
+               {/* New Top Bar */}
+               <div className="flex items-center justify-between px-4 h-16 bg-transparent absolute top-0 left-0 right-0 z-20 pointer-events-none">
+                  <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 text-text-sub pointer-events-auto md:hidden">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                  </button>
+               </div>
+
+               <ChatControls config={chatConfig} setConfig={setChatConfig} />
+
+               <div className="flex-1 overflow-y-auto px-4 py-4 scroll-smooth custom-scrollbar max-w-4xl mx-auto w-full pt-6">
+                  {messages.length === 0 ? (
+                     <div className="h-full flex flex-col items-center justify-center animate-fade-in pb-20">
+                        {/* Greeting Screen */}
+                        <div className="w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-3xl flex items-center justify-center shadow-[0_0_40px_rgba(139,92,246,0.3)] mb-8 animate-float">
+                           <Sparkles className="w-10 h-10 text-white fill-white" />
+                        </div>
+                        
+                        <h2 className="text-xl text-text-sub mb-1">Hello, {personalization.nickname}</h2>
+                        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-purple-400 to-pink-500 bg-clip-text text-transparent mb-4">
+                           Zara AI
+                        </h1>
+                        <p className="text-text-sub mb-12">What would you like to do?</p>
+
+                        {/* Quick Action Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg">
+                           <button 
+                             onClick={() => handleViewChange('builder')}
+                             className="group bg-[#18181b] hover:bg-[#202023] border border-white/5 hover:border-blue-500/30 p-6 rounded-2xl text-left transition-all hover:shadow-xl hover:shadow-blue-500/10"
+                           >
+                              <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center mb-4 text-blue-500 group-hover:scale-110 transition-transform">
+                                 <Hammer className="w-5 h-5" />
+                              </div>
+                              <h3 className="font-bold text-gray-200">App Builder</h3>
+                              <p className="text-xs text-gray-500 mt-1 uppercase tracking-wider font-bold">Full Stack</p>
+                           </button>
+
+                           <button 
+                             onClick={() => {
+                                handleSendMessage("I need emotional support. Can we talk?", []);
+                             }}
+                             className="group bg-[#18181b] hover:bg-[#202023] border border-white/5 hover:border-pink-500/30 p-6 rounded-2xl text-left transition-all hover:shadow-xl hover:shadow-pink-500/10"
+                           >
+                              <div className="w-10 h-10 bg-pink-500/10 rounded-xl flex items-center justify-center mb-4 text-pink-500 group-hover:scale-110 transition-transform">
+                                 <Heart className="w-5 h-5" />
+                              </div>
+                              <h3 className="font-bold text-gray-200">Emotional Support</h3>
+                              <p className="text-xs text-gray-500 mt-1 uppercase tracking-wider font-bold">Well-being</p>
+                           </button>
+                        </div>
+                     </div>
+                  ) : (
+                     messages.map(msg => (
+                        <MessageItem key={msg.id} message={msg} onEdit={setEditingMessage} />
+                     ))
+                  )}
+                  <div ref={messagesEndRef} />
+               </div>
+               
+               <div className="max-w-4xl mx-auto w-full z-20">
+                  <InputArea 
+                      onSendMessage={handleSendMessage}
+                      onStop={handleStop}
+                      isLoading={isLoading}
+                      disabled={false}
+                      isOffline={!navigator.onLine}
+                      editMessage={editingMessage}
+                      onCancelEdit={() => setEditingMessage(null)}
+                      viewMode="chat"
+                  />
+               </div>
             </div>
-        )}
+          )}
 
-        <header className="md:hidden h-14 flex items-center justify-between px-4 border-b border-border bg-background/80 backdrop-blur z-20">
-          <button onClick={() => setIsSidebarOpen(true)} className="text-text">
-            <Menu className="w-6 h-6" />
-          </button>
-          <span className="font-bold text-lg">Zara AI</span>
-          <div className="w-6" />
-        </header>
+          {currentView === 'dashboard' && <HomeDashboard onViewChange={handleViewChange} />}
+          {currentView === 'student' && <StudentMode />}
+          {currentView === 'code' && <CodeMode />}
+          {currentView === 'workspace' && <ImageMode />}
+          {currentView === 'voice' && <VoiceMode />}
+          {currentView === 'live' && <LiveMode personalization={personalization} />}
+          {currentView === 'exam' && <ExamMode />}
+          {currentView === 'flashcard' && <FlashcardMode />}
+          {currentView === 'planner' && <StudyPlanner />}
+          {currentView === 'notes' && <NotesVault onStartChat={(ctx) => { handleViewChange('chat'); handleSendMessage(`Context from notes:\n${ctx}\n\nAnalyze this.`, []); }} />}
+          {currentView === 'analytics' && <AnalyticsDashboard />}
+          {currentView === 'builder' && <AppBuilderMode />}
+          {currentView === 'memory' && <MemoryVault />}
+          {currentView === 'about' && <AboutPage />}
+          
+          {/* Settings Modal */}
+          <SettingsModal 
+             isOpen={isSettingsOpen} 
+             onClose={() => setSettingsOpen(false)}
+             personalization={personalization}
+             setPersonalization={setPersonalization}
+             systemConfig={systemConfig}
+             setSystemConfig={updateSystemConfig}
+             chatConfig={chatConfig}
+             setChatConfig={setChatConfig}
+          />
 
-        <main className="flex-1 overflow-hidden relative flex flex-col">
-          {renderContent()}
-        </main>
+          <CommandPalette 
+             isOpen={isCmdPaletteOpen} 
+             onClose={() => setCmdPaletteOpen(false)}
+             onAction={handleCommand}
+          />
+
+          <FeedbackModal 
+             isOpen={isFeedbackOpen}
+             onClose={() => setFeedbackOpen(false)}
+          />
+        </div>
       </div>
-
-      <CommandPalette 
-          isOpen={isCommandOpen} 
-          onClose={() => setIsCommandOpen(false)} 
-          onAction={handleCommandAction}
-      />
-
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-        personalization={personalization}
-        setPersonalization={handlePersonalizationChange}
-        systemConfig={systemConfig}
-        setSystemConfig={updateSystemConfig}
-      />
       
-      <FeedbackModal 
-        isOpen={isFeedbackOpen}
-        onClose={() => setIsFeedbackOpen(false)}
-      />
+      {/* Keyboard Shortcuts */}
+      <div className="fixed bottom-4 right-4 hidden md:block opacity-50 hover:opacity-100 transition-opacity z-50">
+         <div className="text-[10px] bg-surface/50 backdrop-blur border border-border px-2 py-1 rounded text-text-sub">
+            Press <kbd className="font-mono bg-black/20 px-1 rounded">Cmd+K</kbd> for commands
+         </div>
+      </div>
     </div>
   );
-};
+}
 
 export default App;

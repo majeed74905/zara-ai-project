@@ -1,227 +1,282 @@
 
-import React, { useState, useEffect } from 'react';
-import { Brain, Globe, ChevronDown, UserCircle, Upload, FileText, File, Sparkles, GraduationCap, Shield, Layers, RefreshCw, Activity, Compass, Anchor, Scale, SearchCheck, Zap, AlertTriangle, BookOpen, GitBranch } from 'lucide-react';
-import { ChatConfig, GeminiModel, Persona, ChatSession, InteractionMode } from '../types';
-import { exportChatToMarkdown, exportChatToPDF, exportChatToText } from '../utils/exportUtils';
+import React, { useState, useRef, useEffect } from 'react';
+import { Shield, FileText, Zap, Brain, Sparkles, Scale, GraduationCap, AlertCircle, Eye, EyeOff, Layers, Heart, Search, Activity, RefreshCw, ChevronDown, Cpu, Leaf, Gauge, Settings2, X, MessageSquare, User, Code2, CheckCircle2 } from 'lucide-react';
+import { ChatConfig } from '../types';
 
 interface ChatControlsProps {
   config: ChatConfig;
   setConfig: React.Dispatch<React.SetStateAction<ChatConfig>>;
-  currentSession: ChatSession | null;
 }
 
-export const ChatControls: React.FC<ChatControlsProps> = ({ config, setConfig, currentSession }) => {
-  const [personas, setPersonas] = useState<Persona[]>([]);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showFeatureMenu, setShowFeatureMenu] = useState(false);
+type ZaraPreset = 'fast' | 'eco' | 'high-iq';
 
+export const ChatControls: React.FC<ChatControlsProps> = ({ config, setConfig }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showModelMenu, setShowModelMenu] = useState(false);
+  const [showModeMenu, setShowModeMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menus when clicking outside
   useEffect(() => {
-    const stored = localStorage.getItem('zara_personas');
-    if (stored) setPersonas(JSON.parse(stored));
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowModelMenu(false);
+        setShowModeMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setConfig(prev => ({ ...prev, model: e.target.value as GeminiModel }));
+  // Determine current preset based on config
+  const getCurrentPreset = (): ZaraPreset => {
+    if (config.useThinking) return 'high-iq';
+    if (config.model.includes('lite')) return 'eco';
+    return 'fast';
   };
 
-  const handleModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setConfig(prev => ({ ...prev, interactionMode: e.target.value as InteractionMode }));
+  const currentPreset = getCurrentPreset();
+
+  const applyPreset = (preset: ZaraPreset) => {
+    switch (preset) {
+      case 'fast':
+        setConfig(prev => ({ ...prev, model: 'gemini-2.5-flash', useThinking: false }));
+        break;
+      case 'eco':
+        setConfig(prev => ({ ...prev, model: 'gemini-flash-lite-latest', useThinking: false }));
+        break;
+      case 'high-iq':
+        setConfig(prev => ({ ...prev, model: 'gemini-3-pro-preview', useThinking: true })); // Using Pro for High IQ
+        break;
+    }
+    setShowModelMenu(false);
   };
 
   const toggleFeature = (key: keyof ChatConfig) => {
     setConfig(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const setInteraction = (mode: ChatConfig['interactionMode']) => {
+    setConfig(prev => ({ ...prev, interactionMode: mode }));
+  };
+
+  const activeFeatureCount = Object.entries(config).filter(([k, v]) => 
+    typeof v === 'boolean' && v === true && !['useThinking', 'useGrounding'].includes(k)
+  ).length;
+
+  const getModeLabel = (mode: string) => {
+      switch(mode) {
+          case 'teacher': return { label: 'Teacher', icon: GraduationCap };
+          case 'developer': return { label: 'Developer', icon: Code2 };
+          case 'friend': return { label: 'Friend', icon: Heart };
+          case 'examiner': return { label: 'Examiner', icon: Scale };
+          default: return { label: 'Standard', icon: MessageSquare };
+      }
+  };
+
+  const currentModeInfo = getModeLabel(config.interactionMode);
+  const ModeIcon = currentModeInfo.icon;
+
+  const FeatureToggle = ({ id, label, icon: Icon, color }: any) => (
+    <button 
+      onClick={() => toggleFeature(id)} 
+      className={`px-3 py-2.5 text-left text-xs font-medium flex items-center justify-between rounded-xl transition-all border ${
+        config[id as keyof ChatConfig] 
+          ? `bg-${color}-500/10 text-${color}-500 border-${color}-500/20 shadow-sm` 
+          : 'bg-surfaceHighlight/30 hover:bg-surface text-text-sub hover:text-text border-transparent hover:border-white/5'
+      }`}
+    >
+      <span className="flex items-center gap-2.5"><Icon className="w-4 h-4" /> {label}</span>
+      {config[id as keyof ChatConfig] && <div className={`w-1.5 h-1.5 rounded-full bg-${color}-500 shadow-[0_0_5px_currentColor]`} />}
+    </button>
+  );
+
   return (
-    <div className="flex flex-wrap items-center gap-2 p-2 bg-surface/50 border-b border-white/5 backdrop-blur-sm z-20 transition-all">
-      
-      {/* Model Selector */}
-      <div className="relative group">
-        <select
-          value={config.model}
-          onChange={handleModelChange}
-          className="appearance-none bg-surfaceHighlight border border-border text-text text-xs font-medium rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:border-primary/50 cursor-pointer hover:bg-surfaceHighlight/80 transition-all"
-        >
-          <option value="gemini-2.5-flash">Zara Fast</option>
-          <option value="gemini-3-pro-preview">Zara Pro</option>
-          <option value="gemini-flash-lite-latest">Zara Lite</option>
-        </select>
-        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-sub pointer-events-none" />
-      </div>
+    <div className="w-full bg-background/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-30 transition-all duration-300" ref={menuRef}>
+       
+       {/* Top Bar */}
+       <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+          
+          <div className="flex items-center gap-2">
+              {/* --- 1. MODEL SELECTOR (Video-like UI) --- */}
+              <div className="relative">
+                 <button 
+                   onClick={() => { setShowModelMenu(!showModelMenu); setShowModeMenu(false); }}
+                   className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surfaceHighlight/50 hover:bg-surface border border-white/5 hover:border-white/10 transition-all text-sm font-medium text-text"
+                 >
+                    <span className="hidden sm:inline">
+                       {currentPreset === 'fast' && 'Zara Fast (Default)'}
+                       {currentPreset === 'eco' && 'Zara Lite (Eco)'}
+                       {currentPreset === 'high-iq' && 'Zara Pro (High IQ)'}
+                    </span>
+                    <span className="sm:hidden">
+                       {currentPreset === 'fast' && 'Fast'}
+                       {currentPreset === 'eco' && 'Lite'}
+                       {currentPreset === 'high-iq' && 'Pro'}
+                    </span>
+                    <ChevronDown className="w-3 h-3 text-text-sub" />
+                 </button>
 
-      {/* Interaction Mode Selector (Feature 1) */}
-      <div className="relative group">
-        <select
-          value={config.interactionMode}
-          onChange={handleModeChange}
-          className={`appearance-none border border-border text-xs font-medium rounded-lg pl-3 pr-8 py-1.5 focus:outline-none cursor-pointer transition-all ${
-             config.interactionMode !== 'default' 
-               ? 'bg-primary/10 text-primary border-primary/30' 
-               : 'bg-surfaceHighlight text-text'
-          }`}
-        >
-          <option value="default">Default Mode</option>
-          <option value="teacher">Teacher (Explain)</option>
-          <option value="developer">Developer (Code)</option>
-          <option value="friend">Friend (Casual)</option>
-          <option value="examiner">Examiner (Strict)</option>
-        </select>
-        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 opacity-50 pointer-events-none" />
-      </div>
+                 {/* Custom Model Menu UI */}
+                 {showModelMenu && (
+                    <div className="absolute top-full left-0 mt-2 w-64 bg-[#18181b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 flex flex-col p-2">
+                       <div className="px-2 py-1.5 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Select Model</div>
+                       
+                       <button onClick={() => applyPreset('fast')} className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 transition-colors group">
+                          <div className="flex flex-col text-left">
+                             <span className="text-sm font-medium text-gray-200">Zara Fast</span>
+                             <span className="text-[10px] text-gray-500">Default • Balanced Speed</span>
+                          </div>
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${currentPreset === 'fast' ? 'border-blue-500' : 'border-gray-600 group-hover:border-gray-400'}`}>
+                             {currentPreset === 'fast' && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                          </div>
+                       </button>
 
-      <div className="w-px h-4 bg-white/10 mx-1" />
+                       <button onClick={() => applyPreset('high-iq')} className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 transition-colors group">
+                          <div className="flex flex-col text-left">
+                             <span className="text-sm font-medium text-gray-200">Zara Pro</span>
+                             <span className="text-[10px] text-gray-500">High IQ • Reasoning</span>
+                          </div>
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${currentPreset === 'high-iq' ? 'border-purple-500' : 'border-gray-600 group-hover:border-gray-400'}`}>
+                             {currentPreset === 'high-iq' && <div className="w-2 h-2 rounded-full bg-purple-500" />}
+                          </div>
+                       </button>
 
-      {/* Smart Features Menu */}
-      <div className="relative">
-         <button 
-            onClick={() => setShowFeatureMenu(!showFeatureMenu)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${showFeatureMenu ? 'bg-primary/20 text-primary' : 'bg-surfaceHighlight hover:bg-surface text-text-sub'}`}
-         >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Advanced Features</span>
-            <ChevronDown className="w-3 h-3 opacity-50" />
-         </button>
+                       <button onClick={() => applyPreset('eco')} className="flex items-center justify-between px-3 py-3 rounded-xl hover:bg-white/5 transition-colors group">
+                          <div className="flex flex-col text-left">
+                             <span className="text-sm font-medium text-gray-200">Zara Lite</span>
+                             <span className="text-[10px] text-gray-500">Eco • Fastest Response</span>
+                          </div>
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${currentPreset === 'eco' ? 'border-green-500' : 'border-gray-600 group-hover:border-gray-400'}`}>
+                             {currentPreset === 'eco' && <div className="w-2 h-2 rounded-full bg-green-500" />}
+                          </div>
+                       </button>
+                    </div>
+                 )}
+              </div>
 
-         {showFeatureMenu && (
-            <>
-               <div className="fixed inset-0 z-40" onClick={() => setShowFeatureMenu(false)} />
-               <div className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col z-50 animate-fade-in p-1 max-h-[80vh] overflow-y-auto custom-scrollbar">
-                  
-                  {/* Basic Tools */}
-                  <div className="px-3 py-2 text-[10px] font-bold text-text-sub uppercase tracking-wider bg-surfaceHighlight/30 mb-1">Tools</div>
-                  <button onClick={() => toggleFeature('examMode')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.examMode ? 'bg-primary/10 text-primary' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><GraduationCap className="w-3.5 h-3.5" /> Exam Mode</span>
-                     {config.examMode && <span className="w-2 h-2 rounded-full bg-primary" />}
-                  </button>
-                  <button onClick={() => toggleFeature('integrityMode')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.integrityMode ? 'bg-green-500/10 text-green-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><Shield className="w-3.5 h-3.5" /> Assignment Integrity</span>
-                     {config.integrityMode && <span className="w-2 h-2 rounded-full bg-green-500" />}
-                  </button>
-                  <button onClick={() => toggleFeature('notesFormat')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.notesFormat ? 'bg-blue-500/10 text-blue-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> Auto-Notes (PDF)</span>
-                     {config.notesFormat && <span className="w-2 h-2 rounded-full bg-blue-500" />}
-                  </button>
+              {/* --- 2. INTERACTION MODE SELECTOR --- */}
+              <div className="relative">
+                 <button 
+                   onClick={() => { setShowModeMenu(!showModeMenu); setShowModelMenu(false); }}
+                   className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surfaceHighlight/50 hover:bg-surface border border-white/5 hover:border-white/10 transition-all text-sm font-medium text-text"
+                 >
+                    <ModeIcon className="w-4 h-4 text-primary" />
+                    <span className="hidden sm:inline">{currentModeInfo.label}</span>
+                    <ChevronDown className="w-3 h-3 text-text-sub" />
+                 </button>
 
-                  <div className="h-px bg-border my-1" />
-                  
-                  {/* Cognitive Learning */}
-                  <div className="px-3 py-2 text-[10px] font-bold text-text-sub uppercase tracking-wider bg-surfaceHighlight/30 mb-1">Cognitive & Logic</div>
-                  <button onClick={() => toggleFeature('socraticMethod')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.socraticMethod ? 'bg-indigo-500/10 text-indigo-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><Brain className="w-3.5 h-3.5" /> Socratic Method</span>
-                     {config.socraticMethod && <span className="w-2 h-2 rounded-full bg-indigo-500" />}
-                  </button>
-                  <button onClick={() => toggleFeature('aiDebate')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.aiDebate ? 'bg-indigo-500/10 text-indigo-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><Scale className="w-3.5 h-3.5" /> AI Debate Partner</span>
-                     {config.aiDebate && <span className="w-2 h-2 rounded-full bg-indigo-500" />}
-                  </button>
-                  <button onClick={() => toggleFeature('reverseLearning')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.reverseLearning ? 'bg-indigo-500/10 text-indigo-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><RefreshCw className="w-3.5 h-3.5" /> Reverse Learning</span>
-                     {config.reverseLearning && <span className="w-2 h-2 rounded-full bg-indigo-500" />}
-                  </button>
-                  <button onClick={() => toggleFeature('failureCases')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.failureCases ? 'bg-indigo-500/10 text-indigo-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><AlertTriangle className="w-3.5 h-3.5" /> Failure Analysis</span>
-                     {config.failureCases && <span className="w-2 h-2 rounded-full bg-indigo-500" />}
-                  </button>
-
-                  <div className="h-px bg-border my-1" />
-
-                  {/* Deep Learning */}
-                  <div className="px-3 py-2 text-[10px] font-bold text-text-sub uppercase tracking-wider bg-surfaceHighlight/30 mb-1">Deep Learning</div>
-                  <button onClick={() => toggleFeature('learningGap')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.learningGap ? 'bg-teal-500/10 text-teal-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><SearchCheck className="w-3.5 h-3.5" /> Gap Discovery</span>
-                     {config.learningGap && <span className="w-2 h-2 rounded-full bg-teal-500" />}
-                  </button>
-                  <button onClick={() => toggleFeature('conceptMapping')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.conceptMapping ? 'bg-teal-500/10 text-teal-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><GitBranch className="w-3.5 h-3.5" /> Concept Map</span>
-                     {config.conceptMapping && <span className="w-2 h-2 rounded-full bg-teal-500" />}
-                  </button>
-                  <button onClick={() => toggleFeature('knowledgeTimeline')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.knowledgeTimeline ? 'bg-teal-500/10 text-teal-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><Activity className="w-3.5 h-3.5" /> Knowledge Timeline</span>
-                     {config.knowledgeTimeline && <span className="w-2 h-2 rounded-full bg-teal-500" />}
-                  </button>
-                  <button onClick={() => toggleFeature('tutorMemory')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.tutorMemory ? 'bg-teal-500/10 text-teal-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><BookOpen className="w-3.5 h-3.5" /> Tutor Memory</span>
-                     {config.tutorMemory && <span className="w-2 h-2 rounded-full bg-teal-500" />}
-                  </button>
-
-                  <div className="h-px bg-border my-1" />
-
-                  {/* Metacognition */}
-                  <div className="px-3 py-2 text-[10px] font-bold text-text-sub uppercase tracking-wider bg-surfaceHighlight/30 mb-1">Metacognition</div>
-                  <button onClick={() => toggleFeature('assumptionExposure')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.assumptionExposure ? 'bg-purple-500/10 text-purple-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><Layers className="w-3.5 h-3.5" /> Expose Assumptions</span>
-                     {config.assumptionExposure && <span className="w-2 h-2 rounded-full bg-purple-500" />}
-                  </button>
-                  <button onClick={() => toggleFeature('selfLimit')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.selfLimit ? 'bg-purple-500/10 text-purple-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><Shield className="w-3.5 h-3.5" /> Self-Limit Check</span>
-                     {config.selfLimit && <span className="w-2 h-2 rounded-full bg-purple-500" />}
-                  </button>
-                  <button onClick={() => toggleFeature('confidenceCorrectness')} className={`px-3 py-2 text-left text-xs flex items-center justify-between rounded-lg mb-1 ${config.confidenceCorrectness ? 'bg-purple-500/10 text-purple-500' : 'hover:bg-surfaceHighlight text-text'}`}>
-                     <span className="flex items-center gap-2"><Scale className="w-3.5 h-3.5" /> Confidence Score</span>
-                     {config.confidenceCorrectness && <span className="w-2 h-2 rounded-full bg-purple-500" />}
-                  </button>
-               </div>
-            </>
-         )}
-      </div>
-
-      {/* Main Toggles */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setConfig(prev => ({ ...prev, useThinking: !prev.useThinking }))}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-            config.useThinking 
-              ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' 
-              : 'hover:bg-white/5 text-text-sub'
-          }`}
-          title="Enable Thinking Process"
-        >
-          <Brain className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Thinking</span>
-        </button>
-
-        <button
-          onClick={() => setConfig(prev => ({ ...prev, useGrounding: !prev.useGrounding }))}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-            config.useGrounding 
-              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' 
-              : 'hover:bg-white/5 text-text-sub'
-          }`}
-          title="Enable Search Grounding"
-        >
-          <Globe className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Search</span>
-        </button>
-        
-        {currentSession && (
-          <div className="relative">
-             <button 
-               onClick={() => setShowExportMenu(!showExportMenu)} 
-               className={`p-1.5 rounded-lg transition-colors ${showExportMenu ? 'bg-surfaceHighlight text-text' : 'text-text-sub hover:bg-surfaceHighlight hover:text-text'}`}
-               title="Export Chat"
-             >
-                <Upload className="w-4 h-4" />
-             </button>
-             {showExportMenu && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-border rounded-xl shadow-xl overflow-hidden flex flex-col z-50 animate-fade-in">
-                     <div className="px-3 py-2 text-[10px] font-bold text-text-sub uppercase tracking-wider bg-surfaceHighlight/50">Export As</div>
-                     <button onClick={() => { exportChatToMarkdown(currentSession); setShowExportMenu(false); }} className="px-4 py-2 hover:bg-surfaceHighlight text-left text-sm flex items-center gap-2 text-text transition-colors">
-                        <FileText className="w-4 h-4 text-primary" /> Markdown
-                     </button>
-                     <button onClick={() => { exportChatToText(currentSession); setShowExportMenu(false); }} className="px-4 py-2 hover:bg-surfaceHighlight text-left text-sm flex items-center gap-2 text-text transition-colors">
-                        <File className="w-4 h-4 text-primary" /> Plain Text
-                     </button>
-                     <button onClick={() => { exportChatToPDF(currentSession); setShowExportMenu(false); }} className="px-4 py-2 hover:bg-surfaceHighlight text-left text-sm flex items-center gap-2 text-text transition-colors">
-                        <FileText className="w-4 h-4 text-primary" /> Print / PDF
-                     </button>
-                  </div>
-                </>
-             )}
+                 {/* Interaction Dropdown */}
+                 {showModeMenu && (
+                    <div className="absolute top-full left-0 mt-2 w-48 bg-[#18181b] border border-white/10 rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-1">
+                       <div className="px-3 py-1.5 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Select Persona</div>
+                       {(['standard', 'teacher', 'developer', 'friend', 'examiner'] as const).map(mode => {
+                           const info = getModeLabel(mode);
+                           const Icon = info.icon;
+                           return (
+                               <button 
+                                 key={mode}
+                                 onClick={() => { setInteraction(mode); setShowModeMenu(false); }}
+                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 text-left transition-colors ${config.interactionMode === mode ? 'bg-white/5' : ''}`}
+                               >
+                                  <div className={`p-1.5 rounded-md ${config.interactionMode === mode ? 'text-primary bg-primary/10' : 'text-text-sub bg-surfaceHighlight'}`}>
+                                    <Icon className="w-3.5 h-3.5" />
+                                  </div>
+                                  <span className={`text-sm font-medium ${config.interactionMode === mode ? 'text-white' : 'text-gray-400'}`}>
+                                    {info.label}
+                                  </span>
+                               </button>
+                           );
+                       })}
+                    </div>
+                 )}
+              </div>
           </div>
-        )}
-      </div>
+
+          {/* --- 3. MODULES TRIGGER --- */}
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+               isExpanded 
+                 ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' 
+                 : activeFeatureCount > 0
+                    ? 'bg-surfaceHighlight text-primary border-primary/30'
+                    : 'bg-transparent text-text-sub border-transparent hover:bg-surfaceHighlight'
+            }`}
+          >
+             <Settings2 className="w-4 h-4" />
+             <span className="hidden sm:inline">Modules</span>
+             {activeFeatureCount > 0 && (
+                <span className="bg-primary text-white text-[9px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center ml-1">
+                   {activeFeatureCount}
+                </span>
+             )}
+          </button>
+       </div>
+
+       {/* Collapsible Unified Module Grid */}
+       {isExpanded && (
+         <div className="border-t border-white/5 bg-[#09090b]/95 backdrop-blur-xl shadow-2xl absolute w-full left-0 z-40 max-h-[85vh] overflow-y-auto custom-scrollbar">
+            <div className="max-w-6xl mx-auto px-4 py-6">
+               
+               <div className="flex justify-between items-center mb-8 border-b border-white/5 pb-4">
+                  <div className="flex items-center gap-2">
+                    <Settings2 className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-bold text-white">Module Configuration</h3>
+                  </div>
+                  <button onClick={() => setIsExpanded(false)} className="p-2 hover:bg-white/10 rounded-full text-text-sub hover:text-white transition-colors"><X className="w-5 h-5" /></button>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  
+                  {/* COLUMN 1: Specialized Capabilities */}
+                  <div className="space-y-6">
+                     <h4 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2">
+                        <Shield className="w-3 h-3" /> Specialized Capabilities
+                     </h4>
+                     
+                     <div className="space-y-2">
+                        <FeatureToggle id="examMode" label="Exam Mode" icon={GraduationCap} color="red" />
+                        <FeatureToggle id="integrityMode" label="Integrity Check" icon={Shield} color="green" />
+                        <FeatureToggle id="debateMode" label="AI Debate" icon={Scale} color="orange" />
+                        <FeatureToggle id="socraticMode" label="Socratic Method" icon={Brain} color="teal" />
+                     </div>
+                  </div>
+
+                  {/* COLUMN 2: Intelligence */}
+                  <div className="space-y-6">
+                     <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2">
+                        <Brain className="w-3 h-3" /> Intelligence Layers
+                     </h4>
+                     <div className="grid grid-cols-1 gap-2">
+                        <FeatureToggle id="confidenceIndicator" label="Confidence Score" icon={Activity} color="blue" />
+                        <FeatureToggle id="errorExplanation" label="Explain Errors" icon={AlertCircle} color="yellow" />
+                        <FeatureToggle id="assumptionExposure" label="Show Assumptions" icon={Eye} color="purple" />
+                        <FeatureToggle id="selfLimit" label="Self-Limit Check" icon={EyeOff} color="gray" />
+                        <FeatureToggle id="learningGap" label="Gap Detector" icon={Search} color="pink" />
+                        <FeatureToggle id="moodDetection" label="Mood Sense" icon={Heart} color="rose" />
+                        <FeatureToggle id="useGrounding" label="Google Grounding" icon={Gauge} color="blue" />
+                     </div>
+                  </div>
+
+                  {/* COLUMN 3: Output Style */}
+                  <div className="space-y-6">
+                     <h4 className="text-xs font-bold text-purple-400 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2">
+                        <Sparkles className="w-3 h-3" /> Output Style
+                     </h4>
+                     <div className="grid grid-cols-1 gap-2">
+                        <FeatureToggle id="eli5" label="ELI5 Mode" icon={Sparkles} color="cyan" />
+                        <FeatureToggle id="notesMode" label="Auto-Notes" icon={FileText} color="indigo" />
+                        <FeatureToggle id="reverseLearning" label="Reverse Learning" icon={RefreshCw} color="orange" />
+                        <FeatureToggle id="multiPerspective" label="Multi-View" icon={Layers} color="violet" />
+                        <FeatureToggle id="failureCase" label="Failure Cases" icon={AlertCircle} color="red" />
+                     </div>
+                  </div>
+
+               </div>
+            </div>
+         </div>
+       )}
     </div>
   );
 };

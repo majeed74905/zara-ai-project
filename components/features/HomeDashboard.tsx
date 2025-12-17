@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Target, ArrowRight, Zap, MessageSquare, Clock, Calendar, Hammer, Shield } from 'lucide-react';
+import { ArrowRight, Zap, MessageSquare, Clock, Calendar, Hammer, Brain } from 'lucide-react';
 import { ViewMode } from '../../types';
 
 interface HomeDashboardProps {
@@ -45,18 +45,18 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ onViewChange }) =>
            </button>
         </div>
 
-        {/* Goals */}
+        {/* Memory Vault Shortcut */}
         <div className="bg-surface/50 border border-border rounded-2xl p-6 backdrop-blur-sm hover:border-primary/30 transition-all group">
            <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-yellow-500/10 rounded-lg text-yellow-500">
-                 <Target className="w-6 h-6" />
+              <div className="p-2 bg-cyan-500/10 rounded-lg text-cyan-500">
+                 <Brain className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold bg-surfaceHighlight px-2 py-1 rounded text-text-sub">Progress</span>
+              <span className="text-xs font-bold bg-surfaceHighlight px-2 py-1 rounded text-text-sub">Context</span>
            </div>
-           <h3 className="text-xl font-bold text-text mb-1">3 Tasks Pending</h3>
-           <p className="text-sm text-text-sub mb-4">You're making good progress on "React Mastery".</p>
-           <button onClick={() => onViewChange('skills')} className="text-sm text-primary font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-              Go to SkillOS <ArrowRight className="w-4 h-4" />
+           <h3 className="text-xl font-bold text-text mb-1">Memory Engine</h3>
+           <p className="text-sm text-text-sub mb-4">Zara remembers facts and preferences.</p>
+           <button onClick={() => onViewChange('memory')} className="text-sm text-primary font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+              View Memories <ArrowRight className="w-4 h-4" />
            </button>
         </div>
       </div>
@@ -83,10 +83,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ onViewChange }) =>
                   <span className="font-bold text-sm block">Build App</span>
                   <span className="text-xs text-text-sub">Code generator</span>
                </button>
-               <button onClick={() => onViewChange('life-os')} className="p-3 rounded-xl bg-surfaceHighlight hover:bg-surface border border-transparent hover:border-primary/30 transition-all text-left">
-                  <Shield className="w-5 h-5 mb-2 text-red-400" />
-                  <span className="font-bold text-sm block">Security</span>
-                  <span className="text-xs text-text-sub">Review logs</span>
+               <button onClick={() => onViewChange('exam')} className="p-3 rounded-xl bg-surfaceHighlight hover:bg-surface border border-transparent hover:border-primary/30 transition-all text-left">
+                  <Brain className="w-5 h-5 mb-2 text-red-400" />
+                  <span className="font-bold text-sm block">Exam Prep</span>
+                  <span className="text-xs text-text-sub">Take a quiz</span>
                </button>
             </div>
          </div>
