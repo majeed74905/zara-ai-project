@@ -7,7 +7,6 @@ import { InputArea } from './components/InputArea';
 import { StudentMode } from './components/StudentMode';
 import { CodeMode } from './components/CodeMode';
 import { ImageMode } from './components/ImageMode';
-import { VideoMode } from './components/VideoMode';
 import { VoiceMode } from './components/VoiceMode';
 import { LiveMode } from './components/LiveMode';
 import { ExamMode } from './components/ExamMode';
@@ -19,8 +18,6 @@ import { SettingsModal } from './components/SettingsModal';
 import { CommandPalette } from './components/CommandPalette';
 import { FeedbackModal } from './components/FeedbackModal';
 import { AppBuilderMode } from './components/AppBuilderMode';
-import { HomeDashboard } from './components/features/HomeDashboard';
-import { MemoryVault } from './components/features/MemoryVault';
 import { AboutPage } from './components/AboutPage';
 import { ChatControls } from './components/ChatControls';
 import { useChatSessions } from './hooks/useChatSessions';
@@ -29,7 +26,7 @@ import { useModeThemeSync } from './hooks/useModeThemeSync';
 import { useTheme } from './theme/ThemeContext';
 import { sendMessageToGeminiStream } from './services/gemini';
 import { OfflineService } from './services/offlineService';
-import { Sparkles, Hammer, Heart, Menu } from 'lucide-react';
+import { Sparkles, Hammer, Heart, Menu, ArrowDown } from 'lucide-react';
 
 function App() {
   const [currentView, setCurrentView] = useState<ViewMode>('chat');
@@ -38,7 +35,6 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   
-  // Modals
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isCmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const [isFeedbackOpen, setFeedbackOpen] = useState(false);
@@ -47,7 +43,6 @@ function App() {
   const shouldAutoScrollRef = useRef(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Hooks
   const { 
     sessions, 
     currentSessionId, 
@@ -62,10 +57,8 @@ function App() {
   const { lastView, updateView, systemConfig, updateSystemConfig } = useAppMemory();
   const { setTheme } = useTheme();
   
-  // Adaptive Theme Mode
   useModeThemeSync(currentView, systemConfig.autoTheme, setTheme);
 
-  // State initialization with localStorage persistence
   const [personalization, setPersonalization] = useState<PersonalizationConfig>(() => {
     const saved = localStorage.getItem('zara_personalization');
     if (saved) {
@@ -76,8 +69,8 @@ function App() {
       }
     }
     return {
-      nickname: '', // Default is empty until user changes it
-      occupation: '', // Default is empty until user changes it
+      nickname: '',
+      occupation: '',
       aboutYou: '',
       customInstructions: '',
       fontSize: 'medium',
@@ -85,7 +78,6 @@ function App() {
     };
   });
 
-  // Save personalization whenever it changes
   useEffect(() => {
     localStorage.setItem('zara_personalization', JSON.stringify(personalization));
   }, [personalization]);
@@ -100,14 +92,12 @@ function App() {
     moodDetection: true
   });
 
-  // Ensure initial view matches last view
   useEffect(() => {
     if (lastView && lastView !== 'settings') {
       setCurrentView(lastView);
     }
   }, [lastView]);
 
-  // Load session messages when selected
   useEffect(() => {
     if (currentSessionId) {
       const loadedMsgs = loadSession(currentSessionId);
@@ -156,7 +146,6 @@ function App() {
 
     const botMsgId = crypto.randomUUID();
     
-    // OFFLINE
     if (!isOnline) {
        setTimeout(async () => {
           const offlineResponse = await OfflineService.processMessage(text, personalization, handleViewChange);
@@ -170,7 +159,6 @@ function App() {
        return;
     }
 
-    // ONLINE
     const initialBotMsg: Message = {
         id: botMsgId,
         role: Role.MODEL,
@@ -203,10 +191,8 @@ function App() {
         personalization,
         (fullAccumulatedText) => {
              if (abortRef.current) return;
-             
              const now = Date.now();
              bufferText = fullAccumulatedText;
-
              if (now - lastUpdateTs > THROTTLE_MS) {
                  setMessages(prev => prev.map(m => 
                     m.id === botMsgId ? { ...m, text: bufferText } : m
@@ -218,18 +204,11 @@ function App() {
       );
       
       if (abortRef.current) return;
-
       const finalBotMsg = { ...initialBotMsg, text: finalText, sources, isStreaming: false };
       const finalMessages = [...msgsWithUser, finalBotMsg];
-      
       setMessages(finalMessages);
-      
-      if (!currentSessionId) {
-         createSession(finalMessages);
-      } else {
-         updateSession(currentSessionId, finalMessages);
-      }
-
+      if (!currentSessionId) createSession(finalMessages);
+      else updateSession(currentSessionId, finalMessages);
     } catch (error: any) {
       if (abortRef.current) return;
       setMessages(prev => prev.map(m => 
@@ -262,7 +241,6 @@ function App() {
       if (window.innerWidth < 768) setSidebarOpen(false);
       return;
     }
-    
     setCurrentView(view);
     updateView(view);
     if (window.innerWidth < 768) setSidebarOpen(false);
@@ -284,35 +262,49 @@ function App() {
                 setConfig={setChatConfig} 
                 currentSession={sessions.find(s => s.id === currentSessionId) || null}
              />
-             <div className="flex-1 overflow-y-auto px-4 py-4 scroll-smooth custom-scrollbar max-w-4xl mx-auto w-full pt-6">
+             <div className="flex-1 overflow-y-auto px-4 py-4 scroll-smooth custom-scrollbar max-w-2xl mx-auto w-full pt-6 relative">
                 {messages.length === 0 ? (
-                   <div className="h-full flex flex-col items-center justify-center animate-fade-in pb-20">
-                      <div className="w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-3xl flex items-center justify-center shadow-[0_0_40px_rgba(139,92,246,0.3)] mb-8 animate-float">
-                         <Sparkles className="w-10 h-10 text-white fill-white" />
+                   <div className="h-full flex flex-col items-center justify-center animate-fade-in pt-12 pb-24 px-4">
+                      {/* Brand Icon - Squircle Style */}
+                      <div className="w-24 h-24 bg-[#0c0c0e] rounded-[32px] border border-white/5 flex items-center justify-center shadow-2xl mb-12 relative group">
+                         <div className="absolute inset-0 bg-primary/20 blur-[30px] rounded-full scale-75 group-hover:scale-90 transition-transform duration-700" />
+                         <Sparkles className="w-12 h-12 text-primary relative z-10" strokeWidth={1.5} />
+                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full blur-[2px]" />
+                         <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-primary/50 rounded-full blur-[1px]" />
                       </div>
                       
-                      <div className="text-center mb-8">
-                        <h1 className="flex flex-col items-center font-bold leading-tight">
-                           <span className="text-2xl text-text-sub font-medium mb-1">Hello I'm</span>
-                           <span className="text-5xl md:text-6xl bg-gradient-to-r from-primary via-purple-400 to-pink-500 bg-clip-text text-transparent">Zara AI</span>
-                        </h1>
-                        <h2 className="text-lg text-text-sub mt-4">How can I help you today{personalization.nickname ? `, ${personalization.nickname}` : ''}?</h2>
+                      <div className="text-center mb-12">
+                        <p className="text-gray-400 font-medium text-lg mb-2">Hello, I'm</p>
+                        <h1 className="text-5xl font-black text-white tracking-tight mb-4">Zara AI</h1>
+                        <p className="text-gray-500 font-medium text-lg">What would you like to do?</p>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg px-4">
-                         <button onClick={() => handleViewChange('builder')} className="group bg-surfaceHighlight hover:bg-surface border border-white/5 hover:border-blue-500/30 p-6 rounded-2xl text-left transition-all hover:shadow-xl">
-                            <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center mb-4 text-blue-500 group-hover:scale-110 transition-transform">
+                      <div className="space-y-4 w-full max-w-sm">
+                         {/* Compact Horizontal Cards */}
+                         <button 
+                            onClick={() => handleViewChange('builder')} 
+                            className="w-full bg-black border border-white/10 hover:border-blue-500/30 p-5 rounded-[20px] text-left transition-all hover:bg-[#09090b] flex items-center gap-5 group"
+                         >
+                            <div className="w-12 h-12 bg-[#121214] rounded-xl flex items-center justify-center text-blue-500 group-hover:scale-105 transition-transform border border-white/5">
                                <Hammer className="w-5 h-5" />
                             </div>
-                            <h3 className="font-bold text-text">App Builder</h3>
-                            <p className="text-xs text-text-sub mt-1 uppercase tracking-widest font-bold">Code Architect</p>
+                            <div>
+                               <h3 className="font-bold text-base text-white">App Builder</h3>
+                               <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mt-0.5">Full Stack</p>
+                            </div>
                          </button>
-                         <button onClick={() => handleSendMessage("I need to focus on wellness today.", [])} className="group bg-surfaceHighlight hover:bg-surface border border-white/5 hover:border-pink-500/30 p-6 rounded-2xl text-left transition-all hover:shadow-xl">
-                            <div className="w-10 h-10 bg-pink-500/10 rounded-xl flex items-center justify-center mb-4 text-pink-500 group-hover:scale-110 transition-transform">
-                               <Hammer className="w-5 h-5" />
+
+                         <button 
+                            onClick={() => handleSendMessage("I need emotional support and wellness guidance.", [])} 
+                            className="w-full bg-black border border-white/10 hover:border-pink-500/30 p-5 rounded-[20px] text-left transition-all hover:bg-[#09090b] flex items-center gap-5 group"
+                         >
+                            <div className="w-12 h-12 bg-[#121214] rounded-xl flex items-center justify-center text-pink-500 group-hover:scale-105 transition-transform border border-white/5">
+                               <Heart className="w-5 h-5" />
                             </div>
-                            <h3 className="font-bold text-text">Wellness Check</h3>
-                            <p className="text-xs text-text-sub mt-1 uppercase tracking-widest font-bold">Mental Well-being</p>
+                            <div>
+                               <h3 className="font-bold text-base text-white">Emotional Support</h3>
+                               <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mt-0.5">Well-Being</p>
+                            </div>
                          </button>
                       </div>
                    </div>
@@ -323,7 +315,18 @@ function App() {
                 )}
                 <div ref={messagesEndRef} />
              </div>
-             <div className="max-w-4xl mx-auto w-full z-20">
+             
+             {/* Floating Scroll Bottom Button */}
+             {messages.length > 0 && (
+                <button 
+                   onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                   className="absolute bottom-32 right-8 p-3 bg-black/80 backdrop-blur border border-white/10 rounded-full text-gray-400 hover:text-white shadow-xl transition-all active:scale-95 md:right-1/2 md:translate-x-[340px]"
+                >
+                   <ArrowDown className="w-5 h-5" />
+                </button>
+             )}
+
+             <div className="max-w-2xl mx-auto w-full z-20 pb-4 mt-auto">
                 <InputArea 
                     onSendMessage={handleSendMessage}
                     onStop={handleStop}
@@ -337,7 +340,6 @@ function App() {
              </div>
           </div>
         );
-      case 'dashboard': return <HomeDashboard onViewChange={handleViewChange} personalization={personalization} />;
       case 'student': return <StudentMode />;
       case 'code': return <CodeMode />;
       case 'workspace': return <ImageMode />;
@@ -349,7 +351,6 @@ function App() {
       case 'notes': return <NotesVault onStartChat={(ctx) => { handleViewChange('chat'); handleSendMessage(`Context from notes:\n${ctx}\n\nAnalyze this.`, []); }} />;
       case 'analytics': return <AnalyticsDashboard />;
       case 'builder': return <AppBuilderMode />;
-      case 'memory': return <MemoryVault />;
       case 'about': return <AboutPage />;
       default: return <div className="h-full flex items-center justify-center text-text-sub">Select a mode from the sidebar to begin.</div>;
     }
@@ -376,7 +377,6 @@ function App() {
       />
 
       <div className="flex-1 flex flex-col h-full relative w-full overflow-hidden bg-background">
-        {/* Mobile Header */}
         <div className="flex items-center px-4 h-16 bg-background/50 backdrop-blur-md absolute top-0 left-0 right-0 z-30 md:hidden border-b border-white/5">
            <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 text-text-sub hover:text-text transition-colors">
                <Menu className="w-6 h-6" />
@@ -384,13 +384,11 @@ function App() {
            <h1 className="ml-3 font-bold text-sm text-text">Zara AI</h1>
         </div>
 
-        {/* Main Content Area */}
         <main className="flex-1 overflow-hidden relative flex flex-col h-full w-full">
           {renderCurrentView()}
         </main>
       </div>
       
-      {/* Settings Modal */}
       <SettingsModal 
          isOpen={isSettingsOpen} 
          onClose={() => setSettingsOpen(false)}
@@ -412,13 +410,6 @@ function App() {
          isOpen={isFeedbackOpen}
          onClose={() => setFeedbackOpen(false)}
       />
-
-      {/* Keyboard Shortcuts Prompt */}
-      <div className="fixed bottom-4 right-4 hidden lg:block opacity-30 hover:opacity-100 transition-opacity z-50">
-         <div className="text-[10px] bg-surfaceHighlight/50 backdrop-blur border border-border px-2 py-1 rounded text-text-sub">
-            Press <kbd className="font-mono bg-black/20 px-1 rounded">Cmd+K</kbd> for commands
-         </div>
-      </div>
     </div>
   );
 }

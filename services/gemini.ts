@@ -2,14 +2,14 @@
 import { GoogleGenAI, Type, FunctionDeclaration, Modality } from "@google/genai";
 import { Message, Role, ChatConfig, PersonalizationConfig, Persona, ExamConfig, ExamQuestion, StudyPlan, Flashcard } from '../types';
 
-const API_KEY = process.env.API_KEY || '';
-
+// FIX: Always retrieve and use process.env.API_KEY directly during initialization to ensure current credentials are used.
 // Initialize Gemini Client
 export const getAI = () => {
-  if (!API_KEY) {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
     throw new Error("API Key is missing. Please check your environment variables.");
   }
-  return new GoogleGenAI({ apiKey: API_KEY });
+  return new GoogleGenAI({ apiKey });
 };
 
 // --- MEDIA PLAYER TOOL ---
@@ -283,6 +283,7 @@ export const generateVideo = async (prompt: string, aspectRatio: string = '16:9'
   }
 
   const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+  // FIX: Access process.env.API_KEY directly in the template literal.
   return `${downloadLink}&key=${process.env.API_KEY}`;
 };
 
